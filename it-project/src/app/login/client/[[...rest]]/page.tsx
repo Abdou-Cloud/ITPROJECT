@@ -18,8 +18,7 @@ export default function ClientLoginPage() {
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <SignIn
-              routing="path"
-              path="/login/client"
+              routing="hash"
               signUpUrl="/signup/client"
               fallbackRedirectUrl="/client/dashboard"
             />
