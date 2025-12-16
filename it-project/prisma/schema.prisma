@@ -1,15 +1,115 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
- // url      = env("DATABASE_URL")
+ url      = env("DATABASE_URL")
 }
+
+
+model Bedrijf {
+  bedrijf_id      Int          @id @default(autoincrement())
+  naam            String
+  email           String
+  telefoonnummer  String
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  werknemers      Werknemer[]
+  klanten         Klant[]
+  admins          Admin[]
+  llmProfielen    LLMProfiel[]
+}
+
+model Werknemer {
+  werknemer_id    Int        @id @default(autoincrement())
+  /// Verwijzing naar Clerk user (user_id)
+  clerkUserId     String     @unique
+
+  naam            String
+  email           String
+  telefoonnummer  String
+  geboorte_datum  DateTime
+  bedrijf_id      Int
+
+  bedrijf         Bedrijf    @relation(fields: [bedrijf_id], references: [bedrijf_id])
+  afspraken       Afspraak[]
+
+  @@index([bedrijf_id])
+}
+
+model Klant {
+  klant_id        Int        @id @default(autoincrement())
+  /// Verwijzing naar Clerk user (user_id)
+  clerkUserId     String     @unique
+
+  naam            String
+  email           String
+  telefoonnummer  String
+  geboorte_datum  DateTime
+  bedrijf_id      Int
+
+  bedrijf         Bedrijf    @relation(fields: [bedrijf_id], references: [bedrijf_id])
+  afspraken       Afspraak[]
+  berichten       Bericht[]
+
+  @@index([bedrijf_id])
+}
+
+model Admin {
+  admin_id   Int      @id @default(autoincrement())
+  /// Verwijzing naar Clerk user (user_id)
+  clerkUserId String  @unique
+
+  naam       String
+  email      String
+  bedrijf_id Int
+
+  bedrijf    Bedrijf  @relation(fields: [bedrijf_id], references: [bedrijf_id])
+
+  @@index([bedrijf_id])
+}
+
+model Afspraak {
+  afspraak_id  Int       @id @default(autoincrement())
+  werknemer_id Int
+  klant_id     Int
+  start_datum  DateTime
+  eind_datum   DateTime
+  status       String
+
+  werknemer    Werknemer @relation(fields: [werknemer_id], references: [werknemer_id])
+  klant        Klant     @relation(fields: [klant_id], references: [klant_id])
+
+  @@index([werknemer_id])
+  @@index([klant_id])
+}
+
+model Bericht {
+  bericht_id Int      @id @default(autoincrement())
+  naam       String
+  email      String
+  created_at DateTime @default(now())
+  klant_id   Int
+
+  klant      Klant    @relation(fields: [klant_id], references: [klant_id])
+
+  @@index([klant_id])
+}
+
+model LLMProfiel {
+  llm_id        Int      @id @default(autoincrement())
+  system_prompt String
+  model         String
+  naam          String
+  email         String
+  created_at    DateTime @default(now())
+  bedrijf_id    Int
+
+  bedrijf       Bedrijf  @relation(fields: [bedrijf_id], references: [bedrijf_id])
+
+  @@index([bedrijf_id])
+}
+
