@@ -1,26 +1,46 @@
-"use client";
+// src/components/admin/Topbar.tsx
 
-export default function Topbar() {
+import React from 'react';
+import { Search, User, Zap } from 'lucide-react';
+
+const Topbar: React.FC = () => {
   return (
-    <header className="h-16 flex items-center justify-between px-6 border-b border-white/10 bg-[#0B0F1A]">
-      <input
-        type="text"
-        placeholder="Zoek in het systeem..."
-        className="bg-[#070B14] text-sm px-4 py-2 rounded-lg w-96 outline-none"
-      />
+    <header className="flex justify-between items-center bg-[#1e1e1e] p-4 border-b border-[#333] sticky top-0 z-20">
+      
+      {/* Zoekbalk */}
+      <div className="flex items-center bg-[#2c2c2c] rounded-lg p-2 w-full max-w-xl">
+        <Search size={20} className="text-gray-400 mr-3" />
+        <input 
+          type="text" 
+          placeholder="Zoek in het systeem..." 
+          className="bg-transparent text-white w-full focus:outline-none"
+        />
+      </div>
 
-      <div className="flex items-center gap-4">
-        <span className="text-green-400 text-sm">● System Online</span>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-sm font-bold">
-            AD
+      {/* Systeem Status & Gebruikersinfo */}
+      <div className="flex items-center space-x-6 flex-shrink-0">
+        
+        {/* Systeem Status */}
+        <div className="flex items-center text-sm text-white">
+          <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+          <span className="font-medium">Systeem Online</span>
+        </div>
+
+        {/* Gebruikersinfo */}
+        <div className="flex items-center space-x-3">
+          <div className="text-right text-sm">
+            <p className="font-semibold text-white">Admin User</p>
+            <p className="text-gray-400 text-xs">admin@schedulai.be</p>
           </div>
-          <div className="text-sm">
-            <div>Admin User</div>
-            <div className="text-white/50 text-xs">admin@schedulai.nl</div>
+          <div className="relative">
+            <div className="w-10 h-10 bg-[#ff7a2d] rounded-full flex items-center justify-center text-white font-bold">
+              AD
+            </div>
           </div>
         </div>
       </div>
     </header>
   );
-}
+};
+
+export default Topbar;
