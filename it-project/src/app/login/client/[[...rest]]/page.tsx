@@ -21,7 +21,7 @@ export default function ClientLoginPage() {
               routing="path"
               path="/login/client"
               signUpUrl="/signup/client"
-              afterSignInUrl="/client/dashboard"
+              fallbackRedirectUrl="/client/dashboard"
             />
           </div>
           <div className="text-center mt-6">
