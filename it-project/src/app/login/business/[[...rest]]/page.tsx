@@ -20,7 +20,7 @@ export default function BusinessLoginPage() {
             <SignIn
               routing="path"
               path="/login/business"
-              signUpUrl="/signup/business"
+              signUpUrl="/business/dashboard"
               // Gebruik forceRedirectUrl om naar onze logica-checker te gaan
               forceRedirectUrl="/auth-callback"
             />
