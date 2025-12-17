@@ -1,19 +1,34 @@
 import type { ReactNode } from "react";
-import Sidebar  from "@/components/admin/Sidebar";
+import Sidebar from "@/components/admin/Sidebar";
 import Topbar from "@/components/admin/Topbar";
+import { currentUser } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default async function AdminLayout({ children }: { children: ReactNode }) {
+  // 1. Haal de ingelogde gebruiker op via Clerk (Server-side)
+  const user = await currentUser();
+
+  // 2. Haal het e-mailadres op
+  const email = user?.primaryEmailAddress?.emailAddress;
+
+  // 3. De Hardcoded Check: Alleen jouw e-mailadres krijgt toegang
+  // Iedereen die niet 'adam.akkay@hotmail.com' is, wordt direct weggestuurd
+  if (email !== "adam.akkay@student.ehb.be") {
+    redirect("/"); 
+  }
+
   return (
     <div className="flex min-h-screen bg-[#0B0F1A] text-white">
-      {/* 1. Sidebar is Fixed, dus deze 'zweeft' boven de rest */}
+      {/* Sidebar is Fixed */}
       <Sidebar />
 
-      {/* 2. De content container moet de ruimte van de Sidebar innemen. */}
-      {/* Oplossing: Voeg ml-64 (margin-left: 16rem) toe om de content naar rechts te duwen. */}
+      {/* Content container met margin-left voor de Sidebar ruimte */}
       <div className="flex flex-col flex-1 ml-64"> 
         <Topbar />
-        {/* We verwijderen de p-6 uit de main, en laten de children (page.tsx) de padding bepalen */}
-        <main>{children}</main> 
+        {/* De achtergrondkleur hier zorgt ervoor dat je nooit wit ziet bij het scrollen */}
+        <main className="flex-1 bg-[#0B0F1A]">
+          {children}
+        </main> 
       </div>
     </div>
   );
