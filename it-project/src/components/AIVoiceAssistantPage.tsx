@@ -1,13 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Icon } from "@/components/Icon";
 
 type ChecklistItem = { text: string };
+
+type WerknemerDTO = {
+  werknemer_id: number;
+  naam: string;
+  email: string;
+  telefoonnummer: string;
+};
+
+type AfspraakDTO = {
+  afspraak_id: number;
+  start_datum: string;
+  eind_datum: string;
+  status: string;
+};
 
 function ChecklistRow({ text }: { text: string }) {
   return (
@@ -86,6 +100,21 @@ function MiniFeature({
   );
 }
 
+function toHHMM(d: Date) {
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function buildSlots() {
+  // vaste slots zoals je mock (kan je later aanpassen)
+  return [
+    "09:00","09:30","10:00","10:30","11:00","11:30",
+    "13:00","13:30","14:00","14:30","15:00","15:30",
+    "16:00","16:30","17:00",
+  ];
+}
+
 export default function AIVoiceAssistantPage() {
   const checklist = useMemo<ChecklistItem[]>(
     () => [
@@ -97,6 +126,114 @@ export default function AIVoiceAssistantPage() {
     ],
     []
   );
+
+  // ===== Manual booking state =====
+  const [werknemers, setWerknemers] = useState<WerknemerDTO[]>([]);
+  const [werknemerId, setWerknemerId] = useState<number | "">("");
+  const [date, setDate] = useState<string>(""); // "YYYY-MM-DD"
+  const [busyStarts, setBusyStarts] = useState<Set<string>>(new Set());
+  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [manualError, setManualError] = useState<string>("");
+  const [loadingWerknemers, setLoadingWerknemers] = useState(false);
+  const [loadingAfspraken, setLoadingAfspraken] = useState(false);
+  const [booking, setBooking] = useState(false);
+  const slots = useMemo(() => buildSlots(), []);
+
+  useEffect(() => {
+    // werknemers laden zodra component mount
+    const load = async () => {
+      setLoadingWerknemers(true);
+      setManualError("");
+      try {
+        const res = await fetch("/api/werknemers");
+        if (!res.ok) {
+          const j = await res.json().catch(() => null);
+          throw new Error(j?.error ?? "Werknemers ophalen mislukt");
+        }
+        const data: WerknemerDTO[] = await res.json();
+        setWerknemers(data);
+      } catch (e: any) {
+        setManualError(e?.message ?? "Fout bij ophalen werknemers");
+      } finally {
+        setLoadingWerknemers(false);
+      }
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    // afspraken laden wanneer werknemerId + date gekozen zijn
+    const loadAfspraken = async () => {
+      setBusyStarts(new Set());
+      setSelectedTime("");
+      if (werknemerId === "" || !date) return;
+
+      setLoadingAfspraken(true);
+      setManualError("");
+      try {
+        const res = await fetch(
+          `/api/afspraken?werknemerId=${werknemerId}&date=${encodeURIComponent(date)}`
+        );
+        if (!res.ok) {
+          const j = await res.json().catch(() => null);
+          throw new Error(j?.error ?? "Afspraken ophalen mislukt");
+        }
+        const data: AfspraakDTO[] = await res.json();
+
+        const s = new Set<string>();
+        for (const a of data) {
+          const start = new Date(a.start_datum);
+          s.add(toHHMM(start));
+        }
+        setBusyStarts(s);
+      } catch (e: any) {
+        setManualError(e?.message ?? "Fout bij ophalen afspraken");
+      } finally {
+        setLoadingAfspraken(false);
+      }
+    };
+
+    loadAfspraken();
+  }, [werknemerId, date]);
+
+  const canBook = werknemerId !== "" && !!date && !!selectedTime && !booking;
+
+  const confirmBooking = async () => {
+    if (!canBook) return;
+
+    setBooking(true);
+    setManualError("");
+
+    try {
+      const start = new Date(`${date}T${selectedTime}:00`);
+      const end = new Date(start);
+      end.setMinutes(end.getMinutes() + 30);
+
+      const res = await fetch("/api/afspraken", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          werknemerId,
+          start: start.toISOString(),
+          end: end.toISOString(),
+        }),
+      });
+
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error ?? "Afspraak boeken mislukt");
+      }
+
+      // refresh busy slots
+      setSelectedTime("");
+      // trigger reload by re-setting date
+      setDate((d) => d);
+    } catch (e: any) {
+      setManualError(e?.message ?? "Fout bij boeken");
+    } finally {
+      setBooking(false);
+    }
+  };
 
   return (
     <section className="container mx-auto px-4 py-10">
@@ -112,8 +249,7 @@ export default function AIVoiceAssistantPage() {
         </h1>
 
         <p className="text-sm md:text-base text-slate-300 max-w-3xl">
-          Laat je AI assistent direct telefonisch afspraken maken - 24/7
-          beschikbaar voor je klanten
+          Laat je AI assistent direct telefonisch afspraken maken - 24/7 beschikbaar voor je klanten
         </p>
       </div>
 
@@ -152,10 +288,9 @@ export default function AIVoiceAssistantPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* ===================== AI TAB ===================== */}
+          {/* ===================== AI TAB (ongewijzigd) ===================== */}
           <TabsContent value="ai" className="mt-6">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              {/* LEFT big card */}
               <div className="lg:col-span-5">
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
@@ -191,12 +326,7 @@ export default function AIVoiceAssistantPage() {
 
                   <div className="mt-4 space-y-3">
                     <MiniFeature
-                      icon={
-                        <Icon
-                          name="calendar"
-                          className="h-4 w-4 text-slate-200"
-                        />
-                      }
+                      icon={<Icon name="calendar" className="h-4 w-4 text-slate-200" />}
                       title="Real-time Sync & Scheduling"
                       subtitle="Direct gekoppeld aan je agenda"
                     />
@@ -206,9 +336,7 @@ export default function AIVoiceAssistantPage() {
                       subtitle="Intelligente automatisering"
                     />
                     <MiniFeature
-                      icon={
-                        <Icon name="shield" className="h-4 w-4 text-slate-200" />
-                      }
+                      icon={<Icon name="shield" className="h-4 w-4 text-slate-200" />}
                       title="Automated Interactions"
                       subtitle="Volledige gespreksafhandeling"
                     />
@@ -234,10 +362,7 @@ export default function AIVoiceAssistantPage() {
                         <p className="text-sm font-semibold">You</p>
                       </div>
                       <p className="text-[11px] text-slate-500">CALL NOW</p>
-                      <Link
-                        href="#"
-                        className="text-xs text-sky-400 hover:text-sky-300"
-                      >
+                      <Link href="#" className="text-xs text-sky-400 hover:text-sky-300">
                         Direct bellen
                       </Link>
                     </div>
@@ -254,7 +379,6 @@ export default function AIVoiceAssistantPage() {
                 </div>
               </div>
 
-              {/* RIGHT column */}
               <div className="lg:col-span-7 space-y-6">
                 <PanelCard
                   title="Hoe werkt het?"
@@ -265,21 +389,9 @@ export default function AIVoiceAssistantPage() {
                   }
                 >
                   <div className="space-y-5">
-                    <StepItem
-                      nr={1}
-                      title="Bel het nummer"
-                      text="Klik op 'Start Call' of bel direct naar het aangegeven nummer."
-                    />
-                    <StepItem
-                      nr={2}
-                      title="Spreek met AI"
-                      text="Vertel wanneer je een afspraak wil maken - de AI begrijpt je direct."
-                    />
-                    <StepItem
-                      nr={3}
-                      title="Bevestiging"
-                      text="Je krijgt direct een bevestiging van je afspraak per e-mail."
-                    />
+                    <StepItem nr={1} title="Bel het nummer" text="Klik op 'Start Call' of bel direct naar het aangegeven nummer." />
+                    <StepItem nr={2} title="Spreek met AI" text="Vertel wanneer je een afspraak wil maken - de AI begrijpt je direct." />
+                    <StepItem nr={3} title="Bevestiging" text="Je krijgt direct een bevestiging van je afspraak per e-mail." />
                   </div>
                 </PanelCard>
 
@@ -290,12 +402,8 @@ export default function AIVoiceAssistantPage() {
                         <Icon name="clock" className="h-5 w-5 text-orange-400" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-white">
-                          24/7 Beschikbaar
-                        </p>
-                        <p className="text-sm text-slate-300">
-                          Maak een afspraak wanneer het jou uitkomt.
-                        </p>
+                        <p className="text-sm font-semibold text-white">24/7 Beschikbaar</p>
+                        <p className="text-sm text-slate-300">Maak een afspraak wanneer het jou uitkomt.</p>
                       </div>
                     </div>
 
@@ -304,12 +412,8 @@ export default function AIVoiceAssistantPage() {
                         <Icon name="zap" className="h-5 w-5 text-orange-400" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-white">
-                          Direct Ingepland
-                        </p>
-                        <p className="text-sm text-slate-300">
-                          Geen wachttijden, direct een afspraak.
-                        </p>
+                        <p className="text-sm font-semibold text-white">Direct Ingepland</p>
+                        <p className="text-sm text-slate-300">Geen wachttijden, direct een afspraak.</p>
                       </div>
                     </div>
 
@@ -318,12 +422,8 @@ export default function AIVoiceAssistantPage() {
                         <Icon name="shield" className="h-5 w-5 text-orange-400" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-white">
-                          Veilig & Privé
-                        </p>
-                        <p className="text-sm text-slate-300">
-                          Je gegevens zijn volledig beveiligd.
-                        </p>
+                        <p className="text-sm font-semibold text-white">Veilig & Privé</p>
+                        <p className="text-sm text-slate-300">Je gegevens zijn volledig beveiligd.</p>
                       </div>
                     </div>
                   </div>
@@ -334,9 +434,7 @@ export default function AIVoiceAssistantPage() {
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 text-white">
                       <Icon name="bell" className="h-4 w-4" />
                     </div>
-                    <h3 className="text-base font-semibold text-white">
-                      Tips voor het beste resultaat
-                    </h3>
+                    <h3 className="text-base font-semibold text-white">Tips voor het beste resultaat</h3>
                   </div>
 
                   <div className="space-y-2 text-sm text-slate-200">
@@ -349,48 +447,53 @@ export default function AIVoiceAssistantPage() {
             </div>
           </TabsContent>
 
-          {/* ===================== MANUAL TAB ===================== */}
+          {/* ===================== MANUAL TAB (CONNECTED) ===================== */}
           <TabsContent value="manual" className="mt-6">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              {/* LEFT: Calendar + times */}
+              {/* LEFT */}
               <div className="lg:col-span-5 space-y-6">
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
+                  <p className="text-sm font-semibold text-white mb-4">
+                    Kies een werknemer
+                  </p>
+
+                  <select
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500"
+                    value={werknemerId}
+                    onChange={(e) => setWerknemerId(e.target.value ? Number(e.target.value) : "")}
+                    disabled={loadingWerknemers}
+                  >
+                    <option value="">
+                      {loadingWerknemers ? "Laden..." : "Selecteer werknemer"}
+                    </option>
+                    {werknemers.map((w) => (
+                      <option key={w.werknemer_id} value={w.werknemer_id}>
+                        {w.naam}
+                      </option>
+                    ))}
+                  </select>
+
+                  <p className="text-xs text-slate-500 mt-2">
+                    Je ziet alleen werknemers van jouw bedrijf.
+                  </p>
+                </div>
+
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
                   <p className="text-sm font-semibold text-white mb-4">
                     Selecteer een datum
                   </p>
 
-                  <div className="mb-4 flex items-center justify-between text-sm text-slate-300">
-                    <button className="hover:text-white">&lt;</button>
-                    <span>December 2024</span>
-                    <button className="hover:text-white">&gt;</button>
-                  </div>
+                  <input
+                    type="date"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    disabled={werknemerId === ""}
+                  />
 
-                  <div className="grid grid-cols-7 gap-2 text-center text-sm">
-                    {["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"].map((d) => (
-                      <div key={d} className="text-slate-500 text-xs">
-                        {d}
-                      </div>
-                    ))}
-
-                    {Array.from({ length: 31 }, (_, i) => {
-                      const day = i + 1;
-                      const isActive = day === 4;
-
-                      return (
-                        <button
-                          key={day}
-                          className={`h-10 rounded-lg text-sm transition
-                            ${
-                              isActive
-                                ? "bg-orange-500 text-white"
-                                : "bg-slate-900/60 text-slate-300 hover:text-white hover:bg-slate-800"
-                            }`}
-                        >
-                          {day}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {loadingAfspraken && (
+                    <p className="text-xs text-slate-400 mt-2">Beschikbaarheid laden...</p>
+                  )}
                 </div>
 
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
@@ -399,35 +502,53 @@ export default function AIVoiceAssistantPage() {
                   </p>
 
                   <div className="grid grid-cols-3 gap-2">
-                    {[
-                      "09:00",
-                      "09:30",
-                      "10:00",
-                      "10:30",
-                      "11:00",
-                      "11:30",
-                      "13:00",
-                      "13:30",
-                      "14:00",
-                      "14:30",
-                      "15:00",
-                      "15:30",
-                      "16:00",
-                      "16:30",
-                      "17:00",
-                    ].map((time) => (
-                      <button
-                        key={time}
-                        className="rounded-lg bg-slate-900/60 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition"
-                      >
-                        {time}
-                      </button>
-                    ))}
+                    {slots.map((time) => {
+                      const disabled = werknemerId === "" || !date || busyStarts.has(time);
+                      const active = selectedTime === time;
+
+                      return (
+                        <button
+                          key={time}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => setSelectedTime(time)}
+                          className={[
+                            "rounded-lg px-3 py-2 text-sm transition border",
+                            disabled
+                              ? "bg-slate-950/30 text-slate-600 border-slate-800 cursor-not-allowed"
+                              : "bg-slate-900/60 text-slate-200 border-slate-800 hover:bg-slate-800 hover:text-white",
+                            active ? "bg-orange-500 text-white border-orange-500 hover:bg-orange-500" : "",
+                          ].join(" ")}
+                        >
+                          {time}
+                        </button>
+                      );
+                    })}
                   </div>
+
+                  <div className="mt-4">
+                    <Button
+                      className="w-full bg-orange-500 hover:bg-orange-600 text-white h-11 rounded-xl"
+                      disabled={!canBook}
+                      onClick={confirmBooking}
+                    >
+                      {booking ? "Bezig..." : "Bevestig afspraak"}
+                    </Button>
+                  </div>
+
+                  {manualError && (
+                    <p className="mt-3 text-sm text-red-400">{manualError}</p>
+                  )}
+
+                  {!manualError && werknemerId !== "" && date && (
+                    <p className="mt-3 text-xs text-slate-400">
+                      Bezet = grijs. Vrij = klikbaar.
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* RIGHT: Info cards */}
+              {/* RIGHT */}
               <div className="lg:col-span-7 space-y-6">
                 <PanelCard
                   title="Hoe werkt het?"
@@ -438,16 +559,9 @@ export default function AIVoiceAssistantPage() {
                   }
                 >
                   <div className="space-y-4">
-                    <StepItem
-                      nr={1}
-                      title="Selecteer datum & tijd"
-                      text="Kies een beschikbare datum en tijdslot uit de kalender."
-                    />
-                    <StepItem
-                      nr={2}
-                      title="Bevestig"
-                      text="Controleer je gegevens en bevestig de afspraak."
-                    />
+                    <StepItem nr={1} title="Kies werknemer" text="Selecteer de werknemer bij wie je wil boeken." />
+                    <StepItem nr={2} title="Kies datum & tijd" text="Je ziet enkel vrije tijdsloten." />
+                    <StepItem nr={3} title="Bevestiging" text="Je afspraak wordt meteen opgeslagen in het systeem." />
                   </div>
                 </PanelCard>
 
@@ -470,9 +584,9 @@ export default function AIVoiceAssistantPage() {
                   </div>
 
                   <div className="space-y-2 text-sm text-slate-200">
-                    <p>• Check beschikbaarheid voor meerdere opties</p>
                     <p>• Boek op tijd voor populaire tijdsloten</p>
-                    <p>• Controleer je e-mail voor de bevestiging</p>
+                    <p>• Kies een alternatief als een slot bezet is</p>
+                    <p>• Controleer je bevestiging na het boeken</p>
                   </div>
                 </div>
               </div>
