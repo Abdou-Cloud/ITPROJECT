@@ -21,7 +21,8 @@ export default function BusinessLoginPage() {
               routing="path"
               path="/login/business"
               signUpUrl="/signup/business"
-              fallbackRedirectUrl="/signup/business/plan"
+              // Gebruik forceRedirectUrl om naar onze logica-checker te gaan
+              forceRedirectUrl="/auth-callback"
             />
           </div>
           <div className="text-center mt-6">
