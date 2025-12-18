@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Settings, Cpu } from 'lucide-react';
-import AiLogsTable from '@/components/admin/AiLogsTable';
+// import AiLogsTable from '@/components/admin/AiLogsTable';
 
 export default function AiManagementPage() {
   return (
@@ -10,7 +10,7 @@ export default function AiManagementPage() {
       {/* Header  */}
       <div>
         <h1 className="text-2xl font-semibold text-white">AI Management</h1>
-        <p className="text-gray-500 text-sm">Configureer AI instellingen en bekijk logs</p>
+        <p className="text-gray-500 text-sm">Configureer AI instellingen voor het platform</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -18,36 +18,27 @@ export default function AiManagementPage() {
         <div className="bg-[#0f1219] border border-gray-800/50 rounded-xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-8">
             <Settings className="text-orange-500" size={20} />
-            <h2 className="font-medium text-white">Globale Instellingen</h2>
+            <h2 className="font-medium text-white">AI Instellingen</h2>
           </div>
           
           <div className="space-y-6">
             <div>
-              <label className="block text-xs text-gray-500 mb-2 uppercase tracking-wider font-semibold">Standaard Model</label>
+              <label className="block text-xs text-gray-500 mb-2 uppercase tracking-wider font-semibold">AI Model</label>
               <select className="w-full bg-[#161b22] border border-gray-700 rounded-lg p-2.5 text-gray-300 focus:outline-none focus:border-orange-500 transition-colors">
-                <option>GPT-4o</option>
-                <option>GPT-4 Turbo</option>
+                <option>GPT 4o Cluster (Aanbevolen)</option>
+                <option>GPT 4.1 Mini</option>
+                <option>GPT 4o Mini Cluster</option>
               </select>
             </div>
-            
-            <div>
-              <label className="block text-xs text-gray-500 mb-2 uppercase tracking-wider font-semibold">Temperature</label>
-              <input 
-                type="range" 
-                className="w-full accent-orange-600 h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer" 
-                min="0" max="1" step="0.1" defaultValue="0.7" 
-              />
-              <p className="text-[11px] text-gray-500 mt-2 font-medium">0.7 (Gebalanceerd)</p>
-            </div>
 
-            <div>
+{/*            <div>
               <label className="block text-xs text-gray-500 mb-2 uppercase tracking-wider font-semibold">Max Tokens per Gesprek</label>
               <input 
                 type="number" 
                 defaultValue="2000"
                 className="w-full bg-[#161b22] border border-gray-700 rounded-lg p-2.5 text-gray-300 focus:outline-none focus:border-orange-500 transition-colors"
               />
-            </div>
+            </div>*/}
           </div>
         </div>
 
@@ -69,14 +60,14 @@ export default function AiManagementPage() {
         </div>
       </div>
 
-      {/* Logs Sectie */}
+      {/* Logs Sectie 
       <div className="bg-[#0f1219] border border-gray-800/50 rounded-xl p-6">
         <div className="flex items-center gap-2 mb-6">
           <div className="w-1 h-4 bg-orange-500 rounded-full"></div>
           <h2 className="font-medium text-white">Alle AI Logs</h2>
         </div>
         <AiLogsTable />
-      </div>
+      </div>*/}
     </div>
   );
 }
