@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link'; 
-import { usePathname } from 'next/navigation'; 
+import { usePathname } from 'next/navigation';
+import { SignOutButton } from "@clerk/nextjs"; // Importeer Clerk SignOut
 import { 
   LayoutDashboard, 
   Users, 
@@ -93,13 +94,13 @@ const Sidebar: React.FC = () => {
           // Controleer of de huidige route begint met /admin/instellingen
           isActive={pathname.startsWith('/admin/instellingen')}
         />
-        {/* Uitloggen link */}
-        <NavLink 
-          name="Uitloggen"
-          href="/uitloggen" 
-          Icon={LogOut}
-          isActive={pathname === '/uitloggen'} // Uitloggen is zelden de actieve pagina, maar voor de zekerheid
-        />
+        {/* Werkende Uitloggen knop via Clerk */}
+        <SignOutButton redirectUrl="/">
+          <button className="flex items-center w-full p-3 rounded-lg transition-colors duration-200 text-gray-400 hover:bg-[#2c2c2c] hover:text-white group">
+            <LogOut size={20} className="mr-4 text-gray-400 group-hover:text-white" />
+            <span className="text-sm font-medium">Uitloggen</span>
+          </button>
+        </SignOutButton>
       </div>
     </aside>
   );
