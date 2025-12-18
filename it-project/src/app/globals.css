@@ -125,4 +125,5 @@ html, body {
     /* Gebruik dezelfde donkere kleur als je hoofdlayout (#121212 of #0B0F1A) */
     background-color: #121212; 
     color: white; /* Zorgt ervoor dat standaardtekst zichtbaar blijft */
+    overscroll-behavior: none;
 }
