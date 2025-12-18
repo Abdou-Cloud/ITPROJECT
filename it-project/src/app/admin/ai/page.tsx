@@ -25,10 +25,9 @@ export default function AiManagementPage() {
             <div>
               <label className="block text-xs text-gray-500 mb-2 uppercase tracking-wider font-semibold">AI Model</label>
               <select className="w-full bg-[#161b22] border border-gray-700 rounded-lg p-2.5 text-gray-300 focus:outline-none focus:border-orange-500 transition-colors">
-                <option>GPT-4o (Aanbevolen)</option>
-                <option>GPT-4 Turbo</option>
-                <option>GPT-3.5 Turbo</option>
-                <option>Gemini</option>
+                <option>GPT 4o Cluster (Aanbevolen)</option>
+                <option>GPT 4.1 Mini</option>
+                <option>GPT 4o Mini Cluster</option>
               </select>
             </div>
 
