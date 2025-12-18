@@ -60,9 +60,9 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* 3. Recent Interactions (Onderste rij) */}
-      <div>
+      {/* <div>
         <RecentInteractions />
-      </div>
+      </div>  */}
       
     </div>
   );
