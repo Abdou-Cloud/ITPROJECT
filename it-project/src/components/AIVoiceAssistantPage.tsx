@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Icon } from "@/components/Icon";
+import { useVapiCall } from "@/hooks/useVapiCall";
 
 type ChecklistItem = { text: string };
 
@@ -116,6 +117,17 @@ function buildSlots() {
 }
 
 export default function AIVoiceAssistantPage() {
+  // Vapi call hook voor AI voice assistant
+  const {
+    callActive,
+    connecting,
+    isSpeaking,
+    callEnded,
+    messages,
+    toggleCall,
+    messageContainerRef,
+  } = useVapiCall();
+
   const checklist = useMemo<ChecklistItem[]>(
     () => [
       { text: "Start een nieuw gesprek via AI" },
@@ -361,18 +373,65 @@ export default function AIVoiceAssistantPage() {
                         <Icon name="phone" className="h-4 w-4" />
                         <p className="text-sm font-semibold">You</p>
                       </div>
-                      <p className="text-[11px] text-slate-500">CALL NOW</p>
+                      <p className="text-[11px] text-slate-500">
+                        {callActive ? "IN GESPREK" : connecting ? "VERBINDEN..." : "CALL NOW"}
+                      </p>
                       <Link href="#" className="text-xs text-sky-400 hover:text-sky-300">
                         Direct bellen
                       </Link>
                     </div>
                   </div>
 
+                  {/* Call Status Indicator */}
+                  {(callActive || connecting) && (
+                    <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-3 w-3 rounded-full ${callActive ? (isSpeaking ? 'bg-green-500 animate-pulse' : 'bg-emerald-500') : 'bg-orange-500 animate-pulse'}`} />
+                        <p className="text-sm text-slate-200">
+                          {connecting && "Verbinding maken..."}
+                          {callActive && isSpeaking && "AI spreekt..."}
+                          {callActive && !isSpeaking && "Luisteren..."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Transcript Messages */}
+                  {messages.length > 0 && (
+                    <div 
+                      ref={messageContainerRef}
+                      className="mt-4 max-h-48 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/40 p-4 space-y-2"
+                    >
+                      <p className="text-xs text-slate-500 mb-2">Transcript:</p>
+                      {messages.map((msg, idx) => (
+                        <div key={idx} className={`text-sm ${msg.role === 'assistant' ? 'text-orange-400' : 'text-slate-200'}`}>
+                          <span className="font-semibold">{msg.role === 'assistant' ? 'AI: ' : 'Jij: '}</span>
+                          {msg.content}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Call Ended Message */}
+                  {callEnded && !callActive && (
+                    <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                      <p className="text-sm text-emerald-400">✓ Gesprek beëindigd</p>
+                    </div>
+                  )}
+
                   <div className="mt-5">
-                    <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white h-11 rounded-xl">
+                    <Button 
+                      onClick={toggleCall}
+                      disabled={connecting}
+                      className={`w-full h-11 rounded-xl ${
+                        callActive 
+                          ? 'bg-red-500 hover:bg-red-600 text-white' 
+                          : 'bg-orange-500 hover:bg-orange-600 text-white'
+                      }`}
+                    >
                       <span className="flex items-center justify-center gap-2">
-                        <Icon name="phone" className="h-4 w-4" />
-                        Start Call
+                        <Icon name={callActive ? "phone-off" : "phone"} className="h-4 w-4" />
+                        {connecting ? "Verbinden..." : callActive ? "Beëindig Call" : "Start Call"}
                       </span>
                     </Button>
                   </div>

@@ -22,7 +22,7 @@ export default function DashboardPage() {
     if (userType === "business") {
       router.push("/business/dashboard");
     } else if (userType === "client") {
-      router.push("/client/dashboard");
+      router.push("/assistant");
     } else {
       // If user type is not set, redirect to choose page
       router.push("/choose");

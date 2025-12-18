@@ -1,5 +1,6 @@
 import {
   Phone,
+  PhoneOff,
   Calendar,
   Clock,
   Bell,
@@ -13,6 +14,7 @@ import {
 type IconProps = {
   name:
     | "phone"
+    | "phone-off"
     | "calendar"
     | "clock"
     | "bell"
@@ -27,6 +29,7 @@ type IconProps = {
 export function Icon({ name, className }: IconProps) {
   const icons = {
     phone: Phone,
+    "phone-off": PhoneOff,
     calendar: Calendar,
     clock: Clock,
     bell: Bell,
