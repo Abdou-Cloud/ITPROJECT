@@ -115,11 +115,9 @@ model LLMProfiel {
   @@index([bedrijf_id])
 }
 
-/// Beschikbaarheid represents availability windows for employees.
-/// This model stores predefined availability slots (e.g., working hours).
-/// Note: The existing /api/calendar/slots endpoint calculates available slots
-/// dynamically based on Afspraak (appointments), not Beschikbaarheid.
-/// Beschikbaarheid can be used for future features like custom availability schedules.
+/// Beschikbaarheid stores predefined availability windows for employees.
+/// Used by /api/calendar/slots to fetch available time slots.
+/// Only slots with isBeschikbaar = true are considered available.
 model Beschikbaarheid {
   id            String   @id @default(cuid())
   werknemerId   Int
@@ -133,8 +131,3 @@ model Beschikbaarheid {
   @@index([werknemerId])
   @@index([start_datum])
 }
-
-
-
-
-
