@@ -1,5 +1,5 @@
 import { prisma } from "../../../../../prisma";
-import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 interface TimeSlot {
@@ -10,31 +10,26 @@ interface TimeSlot {
 
 /**
  * GET /api/calendar/slots
- * Returns available time slots for a given employee and date.
+ * Returns available time slots from Beschikbaarheid table for a given employee and date.
  * 
  * Query parameters:
  * - werknemer_id: Employee ID (required)
  * - date: Date in ISO format (YYYY-MM-DD) (required)
- * - duration: Duration in minutes (default: 30)
- * - startHour: Start hour (default: 9)
- * - endHour: End hour (default: 17)
  * 
- * Returns: Array of time slots with availability status
+ * Returns: JSON with werknemer_id, date, and up to 5 available slots
+ * Only returns slots where isBeschikbaar = true and not overlapping with Afspraak
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json({ error: "Niet geautoriseerd" }, { status: 401 });
-    }
+    // TODO: Uncomment when ready to add Clerk authentication
+    // const { userId } = await auth();
+    // if (!userId) {
+    //   return NextResponse.json({ error: "Niet geautoriseerd" }, { status: 401 });
+    // }
 
     const searchParams = request.nextUrl.searchParams;
     const werknemerId = searchParams.get("werknemer_id");
     const date = searchParams.get("date");
-    const duration = parseInt(searchParams.get("duration") || "30", 10);
-    const startHour = parseInt(searchParams.get("startHour") || "9", 10);
-    const endHour = parseInt(searchParams.get("endHour") || "17", 10);
 
     // Validation
     if (!werknemerId || !date) {
@@ -44,9 +39,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const werknemerIdNum = parseInt(werknemerId, 10);
+    if (isNaN(werknemerIdNum)) {
+      return NextResponse.json(
+        { error: "Ongeldig werknemer_id" },
+        { status: 400 }
+      );
+    }
+
     // Verify employee exists
     const werknemer = await prisma.werknemer.findUnique({
-      where: { werknemer_id: parseInt(werknemerId, 10) },
+      where: { werknemer_id: werknemerIdNum },
     });
 
     if (!werknemer) {
@@ -56,17 +59,43 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse the date and set timezone
+    // Parse the date and set boundaries for the day
     const selectedDate = new Date(date);
+    if (isNaN(selectedDate.getTime())) {
+      return NextResponse.json(
+        { error: "Ongeldig datum format" },
+        { status: 400 }
+      );
+    }
+
     const startOfDay = new Date(selectedDate);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(selectedDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // Fetch existing appointments for this employee on this date
+    // Step 1: Query Beschikbaarheid table for available slots
+    const beschikbaarheden = await prisma.beschikbaarheid.findMany({
+      where: {
+        werknemerId: werknemerIdNum,
+        start_datum: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+        isBeschikbaar: true,
+      },
+      select: {
+        start_datum: true,
+        eind_datum: true,
+      },
+      orderBy: {
+        start_datum: "asc",
+      },
+    });
+
+    // Step 2: Query Afspraak table to get booked appointments
     const existingAppointments = await prisma.afspraak.findMany({
       where: {
-        werknemer_id: parseInt(werknemerId, 10),
+        werknemer_id: werknemerIdNum,
         start_datum: {
           gte: startOfDay,
           lte: endOfDay,
@@ -81,21 +110,21 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Generate all possible time slots for the day
-    const slots: TimeSlot[] = [];
-    const currentTime = new Date(startOfDay);
-    currentTime.setHours(startHour, 0, 0, 0);
+    // Step 3: Filter out slots that overlap with existing appointments
+    const now = new Date();
+    const availableSlots: TimeSlot[] = [];
 
-    const endTime = new Date(startOfDay);
-    endTime.setHours(endHour, 0, 0, 0);
+    for (const beschikbaarheid of beschikbaarheden) {
+      const slotStart = new Date(beschikbaarheid.start_datum);
+      const slotEnd = new Date(beschikbaarheid.eind_datum);
 
-    while (currentTime < endTime) {
-      const slotStart = new Date(currentTime);
-      const slotEnd = new Date(currentTime);
-      slotEnd.setMinutes(slotEnd.getMinutes() + duration);
+      // Skip slots in the past
+      if (slotStart < now) {
+        continue;
+      }
 
-      // Check if this slot overlaps with any existing appointment
-      const isBooked = existingAppointments.some((appointment: { start_datum: Date; eind_datum: Date }) => {
+      // Check if slot overlaps with any existing appointment
+      const hasOverlap = existingAppointments.some((appointment: { start_datum: Date; eind_datum: Date }) => {
         const appStart = new Date(appointment.start_datum);
         const appEnd = new Date(appointment.eind_datum);
         
@@ -103,23 +132,26 @@ export async function GET(request: NextRequest) {
         return slotStart < appEnd && slotEnd > appStart;
       });
 
-      // Don't show slots in the past
-      const isPast = slotStart < new Date();
+      // Only include slots without overlaps
+      if (!hasOverlap) {
+        availableSlots.push({
+          start: slotStart.toISOString(),
+          end: slotEnd.toISOString(),
+          available: true,
+        });
 
-      slots.push({
-        start: slotStart.toISOString(),
-        end: slotEnd.toISOString(),
-        available: !isBooked && !isPast,
-      });
-
-      // Move to next slot
-      currentTime.setMinutes(currentTime.getMinutes() + duration);
+        // Limit to 5 slots per request
+        if (availableSlots.length >= 5) {
+          break;
+        }
+      }
     }
 
+    // Step 4: Return JSON response
     return NextResponse.json({
-      werknemer_id: parseInt(werknemerId, 10),
+      werknemer_id: werknemerIdNum,
       date: date,
-      slots: slots,
+      slots: availableSlots,
     });
   } catch (error) {
     console.error("Fout bij ophalen beschikbare slots:", error);

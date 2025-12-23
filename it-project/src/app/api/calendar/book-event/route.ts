@@ -1,5 +1,5 @@
 import { prisma } from "../../../../../prisma";
-import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -17,11 +17,11 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json({ error: "Niet geautoriseerd" }, { status: 401 });
-    }
+    // TODO: Uncomment when ready to add Clerk authentication
+    // const { userId } = await auth();
+    // if (!userId) {
+    //   return NextResponse.json({ error: "Niet geautoriseerd" }, { status: 401 });
+    // }
 
     const body = await request.json();
     const { werknemer_id, klant_id, start_datum, eind_datum, status } = body;
@@ -30,6 +30,14 @@ export async function POST(request: NextRequest) {
     if (!werknemer_id || !start_datum || !eind_datum) {
       return NextResponse.json(
         { error: "werknemer_id, start_datum en eind_datum zijn verplicht" },
+        { status: 400 }
+      );
+    }
+
+    // When auth is disabled, klant_id is required
+    if (!klant_id) {
+      return NextResponse.json(
+        { error: "klant_id is verplicht" },
         { status: 400 }
       );
     }
@@ -82,18 +90,25 @@ export async function POST(request: NextRequest) {
       }
       finalKlantId = klant.klant_id;
     } else {
+      // TODO: Uncomment when ready to add Clerk authentication
       // Try to find client by clerkUserId
-      const klant = await prisma.klant.findUnique({
-        where: { clerkUserId: userId },
-      });
-
-      if (!klant) {
-        return NextResponse.json(
-          { error: "Klant niet gevonden. Log in als klant of geef klant_id op." },
-          { status: 404 }
-        );
-      }
-      finalKlantId = klant.klant_id;
+      // const klant = await prisma.klant.findUnique({
+      //   where: { clerkUserId: userId },
+      // });
+      // 
+      // if (!klant) {
+      //   return NextResponse.json(
+      //     { error: "Klant niet gevonden. Log in als klant of geef klant_id op." },
+      //     { status: 404 }
+      //   );
+      // }
+      // finalKlantId = klant.klant_id;
+      
+      // This should not be reached when auth is disabled (klant_id is required above)
+      return NextResponse.json(
+        { error: "klant_id is verplicht" },
+        { status: 400 }
+      );
     }
 
     // Check for overlapping appointments
