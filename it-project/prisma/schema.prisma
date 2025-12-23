@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
- url      = env("DATABASE_URL")
+  
 }
 
 
@@ -36,6 +36,7 @@ model Werknemer {
 
   bedrijf         Bedrijf    @relation(fields: [bedrijf_id], references: [bedrijf_id])
   afspraken       Afspraak[]
+  beschikbaarheden Beschikbaarheid[]
 
   @@index([bedrijf_id])
 }
@@ -54,6 +55,7 @@ model Klant {
   bedrijf         Bedrijf    @relation(fields: [bedrijf_id], references: [bedrijf_id])
   afspraken       Afspraak[]
   berichten       Bericht[]
+  
 
   @@index([bedrijf_id])
 }
@@ -113,3 +115,19 @@ model LLMProfiel {
   @@index([bedrijf_id])
 }
 
+/// Beschikbaarheid stores predefined availability windows for employees.
+/// Used by /api/calendar/slots to fetch available time slots.
+/// Only slots with isBeschikbaar = true are considered available.
+model Beschikbaarheid {
+  id            String   @id @default(cuid())
+  werknemerId   Int
+  start_datum   DateTime
+  eind_datum    DateTime
+  isBeschikbaar Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  werknemer     Werknemer @relation(fields: [werknemerId], references: [werknemer_id], onDelete: Cascade)
+
+  @@index([werknemerId])
+  @@index([start_datum])
+}
