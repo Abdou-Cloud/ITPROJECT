@@ -57,7 +57,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "smilecare_tandarts_1",
-        naam: "Dr. Jan de Vries",
+        voornaam: "Jan",
+        naam: "de Vries",
         email: "j.devries@smilecare.nl",
         telefoonnummer: "06-11111111",
         geboorte_datum: new Date("1980-05-15"),
@@ -69,7 +70,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "smilecare_tandarts_2",
-        naam: "Dr. Maria Jansen",
+        voornaam: "Maria",
+        naam: "Jansen",
         email: "m.jansen@smilecare.nl",
         telefoonnummer: "06-22222222",
         geboorte_datum: new Date("1985-08-20"),
@@ -81,7 +83,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "smilecare_tandarts_3",
-        naam: "Dr. Pieter Bakker",
+        voornaam: "Pieter",
+        naam: "Bakker",
         email: "p.bakker@smilecare.nl",
         telefoonnummer: "06-33333333",
         geboorte_datum: new Date("1975-03-10"),
@@ -97,7 +100,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "brightteeth_tandarts_1",
-        naam: "Dr. Lisa van der Berg",
+        voornaam: "Lisa",
+        naam: "van der Berg",
         email: "l.vanderberg@brightteeth.nl",
         telefoonnummer: "06-44444444",
         geboorte_datum: new Date("1982-11-25"),
@@ -109,7 +113,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "brightteeth_tandarts_2",
-        naam: "Dr. Tom Smit",
+        voornaam: "Tom",
+        naam: "Smit",
         email: "t.smit@brightteeth.nl",
         telefoonnummer: "06-55555555",
         geboorte_datum: new Date("1988-07-12"),
@@ -121,7 +126,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "brightteeth_tandarts_3",
-        naam: "Dr. Emma de Wit",
+        voornaam: "Emma",
+        naam: "de Wit",
         email: "e.dewit@brightteeth.nl",
         telefoonnummer: "06-66666666",
         geboorte_datum: new Date("1990-01-30"),
@@ -137,7 +143,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "hairstudio_kapper_1",
-        naam: "Sophie Mulder",
+        voornaam: "Sophie",
+        naam: "Mulder",
         email: "s.mulder@hairstudioluxe.nl",
         telefoonnummer: "06-77777777",
         geboorte_datum: new Date("1992-04-18"),
@@ -149,7 +156,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "hairstudio_kapper_2",
-        naam: "Mike van Dijk",
+        voornaam: "Mike",
+        naam: "van Dijk",
         email: "m.vandijk@hairstudioluxe.nl",
         telefoonnummer: "06-88888888",
         geboorte_datum: new Date("1987-09-05"),
@@ -161,7 +169,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "hairstudio_kapper_3",
-        naam: "Anna Meijer",
+        voornaam: "Anna",
+        naam: "Meijer",
         email: "a.meijer@hairstudioluxe.nl",
         telefoonnummer: "06-99999999",
         geboorte_datum: new Date("1995-12-22"),
@@ -177,7 +186,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "kapsalon_kapper_1",
-        naam: "David Hoekstra",
+        voornaam: "David",
+        naam: "Hoekstra",
         email: "d.hoekstra@kapsalontrendy.nl",
         telefoonnummer: "06-10101010",
         geboorte_datum: new Date("1989-06-14"),
@@ -189,7 +199,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "kapsalon_kapper_2",
-        naam: "Laura Post",
+        voornaam: "Laura",
+        naam: "Post",
         email: "l.post@kapsalontrendy.nl",
         telefoonnummer: "06-20202020",
         geboorte_datum: new Date("1993-10-28"),
@@ -201,7 +212,8 @@ async function main() {
       update: {},
       create: {
         clerkUserId: "kapsalon_kapper_3",
-        naam: "Rick de Boer",
+        voornaam: "Rick",
+        naam: "de Boer",
         email: "r.deboer@kapsalontrendy.nl",
         telefoonnummer: "06-30303030",
         geboorte_datum: new Date("1991-02-08"),
