@@ -16,23 +16,23 @@ export default function BusinessLoginPage() {
               Beheer alle afspraken, klanten en je AI assistent vanuit één krachtig dashboard
             </p>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 shadow-2xl">
             <SignIn
               routing="path"
               path="/login/business"
-              signUpUrl="/business/dashboard"
-              // Gebruik forceRedirectUrl om naar onze logica-checker te gaan
+              signUpUrl="/signup/business"
+              // We sturen iedereen naar de callback om de rol (admin vs bedrijf) te bepalen
               forceRedirectUrl="/auth-callback"
             />
           </div>
-          <div className="text-center mt-6">
+          <div className="text-center mt-6 space-y-2">
             <p className="text-slate-400">
               Nog geen account?{" "}
-              <Link href="/signup/business" className="text-orange-500 hover:text-orange-400">
+              <Link href="/signup/business" className="text-orange-500 hover:text-orange-400 font-medium">
                 Registreer als bedrijf
               </Link>
             </p>
-            <p className="text-slate-400 mt-2">
+            <p className="text-slate-400 text-sm">
               Of{" "}
               <Link href="/login/client" className="text-blue-500 hover:text-blue-400">
                 login als klant
