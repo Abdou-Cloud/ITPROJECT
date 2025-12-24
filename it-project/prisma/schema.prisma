@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  
+  url      = env("DATABASE_URL")
 }
 
 
@@ -27,7 +27,7 @@ model Werknemer {
   werknemer_id    Int        @id @default(autoincrement())
   /// Verwijzing naar Clerk user (user_id)
   clerkUserId     String     @unique
-
+  voornaam        String
   naam            String
   email           String
   telefoonnummer  String
@@ -45,7 +45,7 @@ model Klant {
   klant_id        Int        @id @default(autoincrement())
   /// Verwijzing naar Clerk user (user_id)
   clerkUserId     String     @unique
-
+  voornaam        String 
   naam            String
   email           String
   telefoonnummer  String
@@ -63,13 +63,13 @@ model Klant {
 model Admin {
   admin_id   Int      @id @default(autoincrement())
   /// Verwijzing naar Clerk user (user_id)
-  clerkUserId String  @unique
+  clerkUserId  String  @unique
+  voornam      String
+  naam         String
+  email        String
+  bedrijf_id   Int
 
-  naam       String
-  email      String
-  bedrijf_id Int
-
-  bedrijf    Bedrijf  @relation(fields: [bedrijf_id], references: [bedrijf_id])
+  bedrijf      Bedrijf  @relation(fields: [bedrijf_id], references: [bedrijf_id])
 
   @@index([bedrijf_id])
 }
@@ -91,6 +91,7 @@ model Afspraak {
 
 model Bericht {
   bericht_id Int      @id @default(autoincrement())
+  voornaam   String
   naam       String
   email      String
   created_at DateTime @default(now())
@@ -105,6 +106,7 @@ model LLMProfiel {
   llm_id        Int      @id @default(autoincrement())
   system_prompt String
   model         String
+  voornaam      String
   naam          String
   email         String
   created_at    DateTime @default(now())
