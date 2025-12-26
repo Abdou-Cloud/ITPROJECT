@@ -9,6 +9,7 @@ import {
   User,
   Briefcase,
   Zap,
+  Search,
 } from "lucide-react";
 
 type IconProps = {
@@ -22,7 +23,8 @@ type IconProps = {
     | "chart"
     | "user"
     | "briefcase"
-    | "zap";
+    | "zap"
+    | "search";
   className?: string;
 };
 
@@ -38,6 +40,7 @@ export function Icon({ name, className }: IconProps) {
     user: User,
     briefcase: Briefcase,
     zap: Zap,
+    search: Search,
   };
 
   const LucideIcon = icons[name];

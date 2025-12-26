@@ -10,6 +10,14 @@ import { useVapiCall } from "@/hooks/useVapiCall";
 
 type ChecklistItem = { text: string };
 
+type BedrijfDTO = {
+  bedrijf_id: number;
+  naam: string;
+  email: string;
+  telefoonnummer: string;
+  type: string;
+};
+
 type WerknemerDTO = {
   werknemer_id: number;
   naam: string;
@@ -124,6 +132,7 @@ export default function AIVoiceAssistantPage() {
     isSpeaking,
     callEnded,
     messages,
+    error,
     toggleCall,
     messageContainerRef,
   } = useVapiCall();
@@ -140,24 +149,85 @@ export default function AIVoiceAssistantPage() {
   );
 
   // ===== Manual booking state =====
+  // Bedrijf selectie
+  const [bedrijven, setBedrijven] = useState<BedrijfDTO[]>([]);
+  const [bedrijfId, setBedrijfId] = useState<number | "">("");
+  const [bedrijfTypes, setBedrijfTypes] = useState<string[]>([]);
+  const [selectedType, setSelectedType] = useState<string>("alle");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [loadingBedrijven, setLoadingBedrijven] = useState(false);
+
+  // Werknemer en afspraak selectie
   const [werknemers, setWerknemers] = useState<WerknemerDTO[]>([]);
   const [werknemerId, setWerknemerId] = useState<number | "">("");
   const [date, setDate] = useState<string>(""); // "YYYY-MM-DD"
   const [busyStarts, setBusyStarts] = useState<Set<string>>(new Set());
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [manualError, setManualError] = useState<string>("");
+  const [manualSuccess, setManualSuccess] = useState<string>("");
   const [loadingWerknemers, setLoadingWerknemers] = useState(false);
   const [loadingAfspraken, setLoadingAfspraken] = useState(false);
   const [booking, setBooking] = useState(false);
+  const [refreshCounter, setRefreshCounter] = useState(0);
   const slots = useMemo(() => buildSlots(), []);
 
+  // Bedrijfstypes laden bij mount
   useEffect(() => {
-    // werknemers laden zodra component mount
-    const load = async () => {
+    const loadTypes = async () => {
+      try {
+        const res = await fetch("/api/bedrijven/types");
+        if (res.ok) {
+          const data: string[] = await res.json();
+          setBedrijfTypes(data);
+        }
+      } catch (e) {
+        console.error("Fout bij ophalen bedrijfstypes:", e);
+      }
+    };
+    loadTypes();
+  }, []);
+
+  // Bedrijven laden wanneer type of zoekquery verandert
+  useEffect(() => {
+    const loadBedrijven = async () => {
+      setLoadingBedrijven(true);
+      setManualError("");
+      try {
+        const params = new URLSearchParams();
+        if (selectedType !== "alle") {
+          params.set("type", selectedType);
+        }
+        if (searchQuery.trim()) {
+          params.set("search", searchQuery.trim());
+        }
+        
+        const res = await fetch(`/api/bedrijven?${params.toString()}`);
+        if (!res.ok) {
+          const j = await res.json().catch(() => null);
+          throw new Error(j?.error ?? "Bedrijven ophalen mislukt");
+        }
+        const data: BedrijfDTO[] = await res.json();
+        setBedrijven(data);
+      } catch (e: any) {
+        setManualError(e?.message ?? "Fout bij ophalen bedrijven");
+      } finally {
+        setLoadingBedrijven(false);
+      }
+    };
+    loadBedrijven();
+  }, [selectedType, searchQuery]);
+
+  // Werknemers laden wanneer bedrijf gekozen is
+  useEffect(() => {
+    const loadWerknemers = async () => {
+      setWerknemers([]);
+      setWerknemerId("");
+      if (bedrijfId === "") return;
+
       setLoadingWerknemers(true);
       setManualError("");
       try {
-        const res = await fetch("/api/werknemers");
+        const res = await fetch(`/api/werknemers?bedrijfId=${bedrijfId}`);
         if (!res.ok) {
           const j = await res.json().catch(() => null);
           throw new Error(j?.error ?? "Werknemers ophalen mislukt");
@@ -170,14 +240,15 @@ export default function AIVoiceAssistantPage() {
         setLoadingWerknemers(false);
       }
     };
-    load();
-  }, []);
+    loadWerknemers();
+  }, [bedrijfId]);
 
   useEffect(() => {
     // afspraken laden wanneer werknemerId + date gekozen zijn
     const loadAfspraken = async () => {
       setBusyStarts(new Set());
       setSelectedTime("");
+      setManualSuccess("");
       if (werknemerId === "" || !date) return;
 
       setLoadingAfspraken(true);
@@ -206,7 +277,7 @@ export default function AIVoiceAssistantPage() {
     };
 
     loadAfspraken();
-  }, [werknemerId, date]);
+  }, [werknemerId, date, refreshCounter]);
 
   const canBook = werknemerId !== "" && !!date && !!selectedTime && !booking;
 
@@ -215,6 +286,7 @@ export default function AIVoiceAssistantPage() {
 
     setBooking(true);
     setManualError("");
+    setManualSuccess("");
 
     try {
       const start = new Date(`${date}T${selectedTime}:00`);
@@ -236,10 +308,11 @@ export default function AIVoiceAssistantPage() {
         throw new Error(j?.error ?? "Afspraak boeken mislukt");
       }
 
-      // refresh busy slots
+      // Success! Toon bericht en refresh busy slots
+      setManualSuccess(`Afspraak succesvol geboekt voor ${date} om ${selectedTime}!`);
       setSelectedTime("");
-      // trigger reload by re-setting date
-      setDate((d) => d);
+      // Trigger refresh van busy slots
+      setRefreshCounter((c) => c + 1);
     } catch (e: any) {
       setManualError(e?.message ?? "Fout bij boeken");
     } finally {
@@ -413,9 +486,16 @@ export default function AIVoiceAssistantPage() {
                   )}
 
                   {/* Call Ended Message */}
-                  {callEnded && !callActive && (
+                  {callEnded && !callActive && !error && (
                     <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                       <p className="text-sm text-emerald-400">✓ Gesprek beëindigd</p>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {error && (
+                    <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                      <p className="text-sm text-red-400">⚠ {error}</p>
                     </div>
                   )}
 
@@ -511,6 +591,81 @@ export default function AIVoiceAssistantPage() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
               {/* LEFT */}
               <div className="lg:col-span-5 space-y-6">
+                {/* Bedrijf zoeken en filteren */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
+                  <p className="text-sm font-semibold text-white mb-4">
+                    Zoek een bedrijf
+                  </p>
+
+                  {/* Zoekbalk */}
+                  <div className="relative mb-4">
+                    <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Zoek op naam..."
+                      className="w-full rounded-xl border border-slate-800 bg-slate-950/40 pl-10 pr-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500 placeholder:text-slate-500"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Filter op type */}
+                  <div className="mb-4">
+                    <p className="text-xs text-slate-400 mb-2">Filter op categorie:</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedType("alle")}
+                        className={[
+                          "rounded-lg px-3 py-1.5 text-xs font-medium transition border",
+                          selectedType === "alle"
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "bg-slate-900/60 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white",
+                        ].join(" ")}
+                      >
+                        Alle
+                      </button>
+                      {bedrijfTypes.map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setSelectedType(type)}
+                          className={[
+                            "rounded-lg px-3 py-1.5 text-xs font-medium transition border capitalize",
+                            selectedType === type
+                              ? "bg-orange-500 text-white border-orange-500"
+                              : "bg-slate-900/60 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white",
+                          ].join(" ")}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bedrijf dropdown */}
+                  <select
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500"
+                    value={bedrijfId}
+                    onChange={(e) => setBedrijfId(e.target.value ? Number(e.target.value) : "")}
+                    disabled={loadingBedrijven}
+                  >
+                    <option value="">
+                      {loadingBedrijven ? "Laden..." : `Selecteer bedrijf (${bedrijven.length} gevonden)`}
+                    </option>
+                    {bedrijven.map((b) => (
+                      <option key={b.bedrijf_id} value={b.bedrijf_id}>
+                        {b.naam} - {b.type}
+                      </option>
+                    ))}
+                  </select>
+
+                  <p className="text-xs text-slate-500 mt-2">
+                    Zoek en selecteer het bedrijf waar je een afspraak wilt maken.
+                  </p>
+                </div>
+
+                {/* Werknemer selecteren */}
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
                   <p className="text-sm font-semibold text-white mb-4">
                     Kies een werknemer
@@ -520,10 +675,14 @@ export default function AIVoiceAssistantPage() {
                     className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500"
                     value={werknemerId}
                     onChange={(e) => setWerknemerId(e.target.value ? Number(e.target.value) : "")}
-                    disabled={loadingWerknemers}
+                    disabled={bedrijfId === "" || loadingWerknemers}
                   >
                     <option value="">
-                      {loadingWerknemers ? "Laden..." : "Selecteer werknemer"}
+                      {bedrijfId === "" 
+                        ? "Selecteer eerst een bedrijf" 
+                        : loadingWerknemers 
+                          ? "Laden..." 
+                          : `Selecteer werknemer (${werknemers.length} beschikbaar)`}
                     </option>
                     {werknemers.map((w) => (
                       <option key={w.werknemer_id} value={w.werknemer_id}>
@@ -533,7 +692,7 @@ export default function AIVoiceAssistantPage() {
                   </select>
 
                   <p className="text-xs text-slate-500 mt-2">
-                    Je ziet alleen werknemers van jouw bedrijf.
+                    Kies de werknemer bij wie je een afspraak wilt maken.
                   </p>
                 </div>
 
@@ -595,11 +754,17 @@ export default function AIVoiceAssistantPage() {
                     </Button>
                   </div>
 
+                  {manualSuccess && (
+                    <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                      <p className="text-sm text-emerald-400">✓ {manualSuccess}</p>
+                    </div>
+                  )}
+
                   {manualError && (
                     <p className="mt-3 text-sm text-red-400">{manualError}</p>
                   )}
 
-                  {!manualError && werknemerId !== "" && date && (
+                  {!manualError && !manualSuccess && werknemerId !== "" && date && (
                     <p className="mt-3 text-xs text-slate-400">
                       Bezet = grijs. Vrij = klikbaar.
                     </p>
@@ -618,14 +783,17 @@ export default function AIVoiceAssistantPage() {
                   }
                 >
                   <div className="space-y-4">
-                    <StepItem nr={1} title="Kies werknemer" text="Selecteer de werknemer bij wie je wil boeken." />
-                    <StepItem nr={2} title="Kies datum & tijd" text="Je ziet enkel vrije tijdsloten." />
-                    <StepItem nr={3} title="Bevestiging" text="Je afspraak wordt meteen opgeslagen in het systeem." />
+                    <StepItem nr={1} title="Zoek een bedrijf" text="Gebruik de zoekbalk of filter op categorie om een bedrijf te vinden." />
+                    <StepItem nr={2} title="Kies werknemer" text="Selecteer de werknemer bij wie je wil boeken." />
+                    <StepItem nr={3} title="Kies datum & tijd" text="Je ziet enkel vrije tijdsloten." />
+                    <StepItem nr={4} title="Bevestiging" text="Je afspraak wordt meteen opgeslagen in het systeem." />
                   </div>
                 </PanelCard>
 
                 <PanelCard title="Voordelen">
                   <div className="space-y-3 text-sm text-slate-300">
+                    <p>• Alle ingeschreven bedrijven op één plek</p>
+                    <p>• Filter op categorie (kapper, tandarts, etc.)</p>
                     <p>• 24/7 Beschikbaar</p>
                     <p>• Direct ingepland</p>
                     <p>• Veilig & Privé</p>
@@ -643,8 +811,9 @@ export default function AIVoiceAssistantPage() {
                   </div>
 
                   <div className="space-y-2 text-sm text-slate-200">
+                    <p>• Gebruik de zoekbalk om snel je favoriete bedrijf te vinden</p>
+                    <p>• Filter op categorie voor specifieke diensten</p>
                     <p>• Boek op tijd voor populaire tijdsloten</p>
-                    <p>• Kies een alternatief als een slot bezet is</p>
                     <p>• Controleer je bevestiging na het boeken</p>
                   </div>
                 </div>

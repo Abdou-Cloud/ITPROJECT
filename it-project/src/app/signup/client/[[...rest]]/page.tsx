@@ -20,7 +20,7 @@ export default function ClientSignupPage() {
             <SignUp
               routing="hash"
               signInUrl="/login/client"
-              fallbackRedirectUrl="/assistant"
+              fallbackRedirectUrl="/auth-callback?type=client"
             />
           </div>
           <div className="text-center mt-6">

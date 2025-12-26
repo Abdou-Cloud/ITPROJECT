@@ -21,7 +21,7 @@ export default function BusinessSignupPage() {
               routing="path"
               path="/signup/business"
               signInUrl="/login/business"
-              fallbackRedirectUrl="/signup/business/complete"
+              fallbackRedirectUrl="/auth-callback?type=business"
             />
           </div>
           <div className="text-center mt-6">

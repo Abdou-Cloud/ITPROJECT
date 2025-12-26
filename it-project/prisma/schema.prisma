@@ -8,68 +8,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model Bedrijf {
-  bedrijf_id      Int          @id @default(autoincrement())
-  naam            String
-  email           String
-  telefoonnummer  String
-  created_at      DateTime     @default(now())
-  updated_at      DateTime     @updatedAt
-
-  werknemers      Werknemer[]
-  klanten         Klant[]
-  admins          Admin[]
-  llmProfielen    LLMProfiel[]
+  bedrijf_id     Int          @id @default(autoincrement())
+  naam           String
+  email          String
+  telefoonnummer String
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
+  admins         Admin[]
+  klanten        Klant[]
+  llmProfielen   LLMProfiel[]
+  werknemers     Werknemer[]
 }
 
 model Werknemer {
-  werknemer_id    Int        @id @default(autoincrement())
+  werknemer_id     Int               @id @default(autoincrement())
   /// Verwijzing naar Clerk user (user_id)
-  clerkUserId     String     @unique
-  voornaam        String
-  naam            String
-  email           String
-  telefoonnummer  String
-  geboorte_datum  DateTime
-  bedrijf_id      Int
-
-  bedrijf         Bedrijf    @relation(fields: [bedrijf_id], references: [bedrijf_id])
-  afspraken       Afspraak[]
+  clerkUserId      String            @unique
+  voornaam         String
+  naam             String
+  email            String
+  telefoonnummer   String
+  geboorte_datum   DateTime
+  bedrijf_id       Int
+  afspraken        Afspraak[]
+  bedrijf          Bedrijf           @relation(fields: [bedrijf_id], references: [bedrijf_id])
   beschikbaarheden Beschikbaarheid[]
 
   @@index([bedrijf_id])
 }
 
 model Klant {
-  klant_id        Int        @id @default(autoincrement())
+  klant_id       Int        @id @default(autoincrement())
   /// Verwijzing naar Clerk user (user_id)
-  clerkUserId     String     @unique
-  voornaam        String 
-  naam            String
-  email           String
-  telefoonnummer  String
-  geboorte_datum  DateTime
-  bedrijf_id      Int
-
-  bedrijf         Bedrijf    @relation(fields: [bedrijf_id], references: [bedrijf_id])
-  afspraken       Afspraak[]
-  berichten       Bericht[]
-  
+  clerkUserId    String     @unique
+  voornaam       String
+  naam           String
+  email          String
+  telefoonnummer String
+  geboorte_datum DateTime?  @default(now())
+  bedrijf_id     Int?
+  afspraken      Afspraak[]
+  berichten      Bericht[]
+  bedrijf        Bedrijf?   @relation(fields: [bedrijf_id], references: [bedrijf_id])
 
   @@index([bedrijf_id])
 }
 
 model Admin {
-  admin_id   Int      @id @default(autoincrement())
+  admin_id    Int      @id @default(autoincrement())
   /// Verwijzing naar Clerk user (user_id)
-  clerkUserId  String  @unique
-  voornam      String
-  naam         String
-  email        String
-  bedrijf_id   Int
-
-  bedrijf      Bedrijf  @relation(fields: [bedrijf_id], references: [bedrijf_id])
+  clerkUserId String   @unique
+  voornaam    String
+  naam        String
+  email       String
+  bedrijf_id  Int?
+  bedrijf     Bedrijf? @relation(fields: [bedrijf_id], references: [bedrijf_id])
 
   @@index([bedrijf_id])
 }
@@ -81,9 +75,8 @@ model Afspraak {
   start_datum  DateTime
   eind_datum   DateTime
   status       String
-
-  werknemer    Werknemer @relation(fields: [werknemer_id], references: [werknemer_id])
   klant        Klant     @relation(fields: [klant_id], references: [klant_id])
+  werknemer    Werknemer @relation(fields: [werknemer_id], references: [werknemer_id])
 
   @@index([werknemer_id])
   @@index([klant_id])
@@ -96,7 +89,6 @@ model Bericht {
   email      String
   created_at DateTime @default(now())
   klant_id   Int
-
   klant      Klant    @relation(fields: [klant_id], references: [klant_id])
 
   @@index([klant_id])
@@ -111,25 +103,18 @@ model LLMProfiel {
   email         String
   created_at    DateTime @default(now())
   bedrijf_id    Int
-
   bedrijf       Bedrijf  @relation(fields: [bedrijf_id], references: [bedrijf_id])
 
   @@index([bedrijf_id])
 }
 
-/// Beschikbaarheid stores predefined availability windows for employees.
-/// Used by /api/calendar/slots to fetch available time slots.
-/// Only slots with isBeschikbaar = true are considered available.
 model Beschikbaarheid {
-  id            String   @id @default(cuid())
-  werknemerId   Int
-  start_datum   DateTime
-  eind_datum    DateTime
-  isBeschikbaar Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  beschikbaarheid_id Int       @id @default(autoincrement())
+  werknemer_id       Int
+  dag                String
+  start_tijd         DateTime
+  eind_tijd          DateTime
+  werknemer          Werknemer @relation(fields: [werknemer_id], references: [werknemer_id])
 
-  werknemer     Werknemer @relation(fields: [werknemerId], references: [werknemer_id], onDelete: Cascade)
-
-  @@index([werknemerId])
-  @@index([start_datum])
+  @@index([werknemer_id])
 }
