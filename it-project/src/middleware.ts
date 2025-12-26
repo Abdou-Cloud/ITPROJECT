@@ -1,15 +1,22 @@
 import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
+// Beschermde routes
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
-const isBusinessRoute = createRouteMatcher(['/business(.*)']);
-const isClientRoute = createRouteMatcher(['/assistant(.*)']);
+const isBusinessDashboard = createRouteMatcher(['/business/dashboard(.*)']);
+// Voeg de callback route toe aan de uitzonderingen
+const isPublicRoute = createRouteMatcher(['/', '/login(.*)', '/signup(.*)', '/auth-callback']);
 
 export default clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
 
-  // Als iemand niet is ingelogd en naar admin probeert te gaan
-  if (!userId && isAdminRoute(req)) {
+  // 1. Als de route publiek is (zoals /auth-callback), laat de middleware direct doorgaan
+  if (isPublicRoute(req)) {
+    return NextResponse.next();
+  }
+
+  // 2. Als iemand niet is ingelogd en naar een beschermde route gaat
+  if (!userId && (isAdminRoute(req) || isBusinessDashboard(req))) {
     return NextResponse.redirect(new URL('/login/business', req.url));
   }
 
@@ -34,14 +41,14 @@ export default clerkMiddleware(async (auth, req) => {
     const isAdam = email === 'adam.akkay@student.ehb.be';
     const userType = user.publicMetadata?.userType as string | undefined;
 
-    // 1. Forceer Adam naar /admin als hij op het gewone dashboard landt
-    if (isAdam && req.nextUrl.pathname.startsWith('/business/dashboard')) {
+    // 3. Forceer om naar /admin te gaan
+    if (isAdam && isBusinessDashboard(req)) {
       return NextResponse.redirect(new URL('/admin', req.url));
     }
 
-    // 2. Blokkeer admin toegang voor iedereen die Adam niet is
+    // 4. Blokkeer admin toegang voor iedereen die geen admin is
     if (isAdminRoute(req) && !isAdam) {
-      return NextResponse.redirect(new URL('/', req.url));
+      return NextResponse.redirect(new URL('/business/dashboard', req.url));
     }
 
     // 3. Blokkeer business routes voor klanten

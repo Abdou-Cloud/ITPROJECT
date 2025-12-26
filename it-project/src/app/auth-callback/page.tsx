@@ -140,8 +140,10 @@ function AuthCallbackContent() {
   return (
     <div className="min-h-screen bg-[#0b0e14] flex items-center justify-center">
       <div className="text-center">
-        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-white text-sm">Sessie verifiëren...</p>
+        {/* Een mooie loader die past bij jouw donkere thema */}
+        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <h2 className="text-white font-semibold text-lg">Sessie verifiëren</h2>
+        <p className="text-slate-400 text-sm mt-2">Een moment geduld, we bereiden je dashboard voor...</p>
       </div>
     </div>
   );
