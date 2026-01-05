@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server';
 // Beschermde routes
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 const isBusinessDashboard = createRouteMatcher(['/business/dashboard(.*)']);
+const isBusinessRoute = createRouteMatcher(['/business(.*)']);
+const isClientRoute = createRouteMatcher(['/assistant(.*)']);
 // Voeg de callback route toe aan de uitzonderingen
 const isPublicRoute = createRouteMatcher(['/', '/login(.*)', '/signup(.*)', '/auth-callback']);
 
