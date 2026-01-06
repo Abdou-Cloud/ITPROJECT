@@ -1,8 +1,9 @@
-import { prisma } from "../../../../prisma";
+import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET - Haal werknemers op voor een specifiek bedrijf (voor klanten om te kunnen boeken)
+// Customers are platform-wide and can view employees from any company
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
@@ -15,51 +16,31 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const bedrijfIdParam = searchParams.get("bedrijfId");
 
-    // Als bedrijfId is meegegeven, haal werknemers van dat bedrijf op
-    if (bedrijfIdParam) {
-      const bedrijfId = Number(bedrijfIdParam);
-
-      // Controleer of het bedrijf bestaat
-      const bedrijf = await prisma.bedrijf.findUnique({
-        where: { bedrijf_id: bedrijfId },
-      });
-
-      if (!bedrijf) {
-        return NextResponse.json({ error: "Bedrijf niet gevonden" }, { status: 404 });
-      }
-
-      // Haal alle werknemers van het bedrijf op
-      const werknemers = await prisma.werknemer.findMany({
-        where: { bedrijf_id: bedrijfId },
-        select: {
-          werknemer_id: true,
-          naam: true,
-          email: true,
-          telefoonnummer: true,
-        },
-        orderBy: {
-          naam: "asc",
-        },
-      });
-
-      return NextResponse.json(werknemers);
+    // bedrijfId is required - customers can view employees from any company
+    if (!bedrijfIdParam) {
+      return NextResponse.json(
+        { error: "bedrijfId parameter is verplicht" },
+        { status: 400 }
+      );
     }
 
-    // Fallback: Zoek de klant op basis van clerkUserId om het bedrijf te vinden
-    const klant = await prisma.klant.findUnique({
-      where: { clerkUserId: userId },
-      select: { bedrijf_id: true },
+    const bedrijfId = Number(bedrijfIdParam);
+
+    // Controleer of het bedrijf bestaat
+    const bedrijf = await prisma.bedrijf.findUnique({
+      where: { bedrijf_id: bedrijfId },
     });
 
-    if (!klant) {
-      return NextResponse.json({ error: "Klant niet gevonden" }, { status: 404 });
+    if (!bedrijf) {
+      return NextResponse.json({ error: "Bedrijf niet gevonden" }, { status: 404 });
     }
 
     // Haal alle werknemers van het bedrijf op
     const werknemers = await prisma.werknemer.findMany({
-      where: { bedrijf_id: klant.bedrijf_id },
+      where: { bedrijf_id: bedrijfId },
       select: {
         werknemer_id: true,
+        voornaam: true,
         naam: true,
         email: true,
         telefoonnummer: true,

@@ -1,4 +1,4 @@
-import { prisma } from "../../../../prisma";
+import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -145,13 +145,60 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Parse dates
+      const startDateTime = new Date(startDate);
+      const endDateTime = new Date(endDate);
+
+      // Validate dates
+      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+        return NextResponse.json(
+          { error: "Ongeldige datum format" },
+          { status: 400 }
+        );
+      }
+
+      // Validate that end_datum is after start_datum
+      if (startDateTime >= endDateTime) {
+        return NextResponse.json(
+          { error: "Einddatum moet na startdatum zijn" },
+          { status: 400 }
+        );
+      }
+
       // Zoek de klant op basis van clerkUserId
-      const klant = await prisma.klant.findUnique({
+      let klant = await prisma.klant.findUnique({
         where: { clerkUserId: userId },
       });
 
+      // If Klant not found, try to sync it automatically
       if (!klant) {
-        return NextResponse.json({ error: "Klant niet gevonden" }, { status: 404 });
+        console.log(`[Booking API] Klant not found for userId: ${userId}, attempting to sync...`);
+        try {
+          // Import and call ensureKlantExists
+          const { ensureKlantExists } = await import("@/lib/klant-sync");
+          await ensureKlantExists(userId);
+          
+          // Fetch the klant again after sync
+          klant = await prisma.klant.findUnique({
+            where: { clerkUserId: userId },
+          });
+
+          if (!klant) {
+            console.error(`[Booking API] Klant still not found after sync for userId: ${userId}`);
+            return NextResponse.json(
+              { error: "Klant niet gevonden en synchronisatie mislukt" },
+              { status: 404 }
+            );
+          }
+
+          console.log(`[Booking API] ✓ Klant successfully synced and found, klant_id: ${klant.klant_id}`);
+        } catch (syncError) {
+          console.error(`[Booking API] Error syncing Klant for userId: ${userId}`, syncError);
+          return NextResponse.json(
+            { error: "Klant niet gevonden en synchronisatie mislukt" },
+            { status: 404 }
+          );
+        }
       }
 
       // Controleer of de werknemer bestaat
@@ -163,36 +210,26 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Werknemer niet gevonden" }, { status: 404 });
       }
 
-      // Klanten kunnen bij elk bedrijf boeken (geen bedrijf check meer nodig)
+      // Note: Customers can book with any employee from any company (platform-wide booking)
+      // No bedrijf_id validation needed - customers are platform-wide users
 
-      // Controleer of het tijdslot nog vrij is
-      const startDateTime = new Date(startDate);
-      const endDateTime = new Date(endDate);
-
-      const bestaandeAfspraak = await prisma.afspraak.findFirst({
+      // Check for overlapping appointments to ensure time slot is available
+      const overlappingAppointment = await prisma.afspraak.findFirst({
         where: {
           werknemer_id: Number(werknemerId),
-          OR: [
-            {
-              // Nieuwe afspraak begint tijdens een bestaande
-              start_datum: { lte: startDateTime },
-              eind_datum: { gt: startDateTime },
-            },
-            {
-              // Nieuwe afspraak eindigt tijdens een bestaande
-              start_datum: { lt: endDateTime },
-              eind_datum: { gte: endDateTime },
-            },
-            {
-              // Bestaande afspraak valt binnen nieuwe afspraak
-              start_datum: { gte: startDateTime },
-              eind_datum: { lte: endDateTime },
-            },
-          ],
+          start_datum: {
+            lt: endDateTime,
+          },
+          eind_datum: {
+            gt: startDateTime,
+          },
+          status: {
+            not: "geannuleerd",
+          },
         },
       });
 
-      if (bestaandeAfspraak) {
+      if (overlappingAppointment) {
         return NextResponse.json(
           { error: "Dit tijdslot is al bezet" },
           { status: 409 }
@@ -211,6 +248,8 @@ export async function POST(request: NextRequest) {
         include: {
           werknemer: {
             select: {
+              werknemer_id: true,
+              voornaam: true,
               naam: true,
               email: true,
               telefoonnummer: true,
@@ -218,6 +257,8 @@ export async function POST(request: NextRequest) {
           },
           klant: {
             select: {
+              klant_id: true,
+              voornaam: true,
               naam: true,
               email: true,
               telefoonnummer: true,

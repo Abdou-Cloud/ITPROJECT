@@ -42,6 +42,12 @@ function AuthCallbackContent() {
         if (userType === "business") {
           router.push("/business/dashboard");
         } else {
+          // Ensure Klant exists for client users
+          try {
+            await fetch("/api/auth/sync-klant");
+          } catch (error) {
+            console.error("Fout bij synchroniseren klant:", error);
+          }
           router.push("/assistant");
         }
         return;
@@ -69,6 +75,12 @@ function AuthCallbackContent() {
           if (data.existingType === "business") {
             router.push("/business/dashboard");
           } else {
+            // Ensure Klant exists for client users
+            try {
+              await fetch("/api/auth/sync-klant");
+            } catch (error) {
+              console.error("Fout bij synchroniseren klant:", error);
+            }
             router.push("/assistant");
           }
           return;
@@ -83,6 +95,12 @@ function AuthCallbackContent() {
         });
         
         if (newType === "client") {
+          // Ensure Klant exists for client users
+          try {
+            await fetch("/api/auth/sync-klant");
+          } catch (error) {
+            console.error("Fout bij synchroniseren klant:", error);
+          }
           router.push("/assistant");
         } else {
           router.push("/business/dashboard");
