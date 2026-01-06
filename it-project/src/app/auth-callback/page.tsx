@@ -40,6 +40,12 @@ function AuthCallbackContent() {
 
         // Type komt overeen, redirect
         if (userType === "business") {
+          // Ensure Bedrijf exists for business users
+          try {
+            await fetch("/api/auth/sync-bedrijf");
+          } catch (error) {
+            console.error("Fout bij synchroniseren bedrijf:", error);
+          }
           router.push("/business/dashboard");
         } else {
           // Ensure Klant exists for client users
@@ -73,6 +79,12 @@ function AuthCallbackContent() {
           });
           
           if (data.existingType === "business") {
+            // Ensure Bedrijf exists for business users
+            try {
+              await fetch("/api/auth/sync-bedrijf");
+            } catch (error) {
+              console.error("Fout bij synchroniseren bedrijf:", error);
+            }
             router.push("/business/dashboard");
           } else {
             // Ensure Klant exists for client users
@@ -103,6 +115,12 @@ function AuthCallbackContent() {
           }
           router.push("/assistant");
         } else {
+          // Ensure Bedrijf exists for business users
+          try {
+            await fetch("/api/auth/sync-bedrijf");
+          } catch (error) {
+            console.error("Fout bij synchroniseren bedrijf:", error);
+          }
           router.push("/business/dashboard");
         }
       } catch (error) {
