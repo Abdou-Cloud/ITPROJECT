@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { resend } from "@/lib/resend";
+
 
 // GET - Haal afspraken op
 // Ondersteunt twee flows:
@@ -246,26 +248,54 @@ export async function POST(request: NextRequest) {
           status: status || "gepland",
         },
         include: {
-          werknemer: {
-            select: {
-              werknemer_id: true,
-              voornaam: true,
-              naam: true,
-              email: true,
-              telefoonnummer: true,
-            },
-          },
-          klant: {
-            select: {
-              klant_id: true,
-              voornaam: true,
-              naam: true,
-              email: true,
-              telefoonnummer: true,
-            },
-          },
+  werknemer: {
+    select: {
+      werknemer_id: true,
+      voornaam: true,
+      naam: true,
+      email: true,
+      telefoonnummer: true,
+      bedrijf: {
+        select: {
+          naam: true,
+          email: true,
         },
+      },
+    },
+  },
+  klant: {
+    select: {
+      klant_id: true,
+      voornaam: true,
+      naam: true,
+      email: true,
+      telefoonnummer: true,
+    },
+  },
+},
       });
+
+      if (afspraak.werknemer?.bedrijf?.email) {
+  try {
+    await resend.emails.send({
+      from: "SchedulAI <onboarding@resend.dev>",
+      to: afspraak.werknemer.bedrijf.email,
+      subject: "Nieuwe afspraak bevestigd 📅",
+      html: `
+        <p>Hallo ${afspraak.werknemer.bedrijf.naam},</p>
+        <p>Er is een nieuwe afspraak bevestigd.</p>
+        <ul>
+          <li><strong>Klant:</strong> ${afspraak.klant.voornaam} ${afspraak.klant.naam}</li>
+          <li><strong>Werknemer:</strong> ${afspraak.werknemer.voornaam} ${afspraak.werknemer.naam}</li>
+          <li><strong>Wanneer:</strong> ${new Date(afspraak.start_datum).toLocaleString("nl-BE")}</li>
+        </ul>
+        <p>— SchedulAI</p>
+      `,
+    });
+  } catch (e) {
+    console.error("[Booking API] Failed to send company confirmation email", e);
+  }
+}
 
       return NextResponse.json(afspraak, { status: 201 });
     }
