@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   // 3. De Hardcoded Check: Alleen jouw e-mailadres krijgt toegang
   // Iedereen die niet 'adam.akkay@hotmail.com' is, wordt direct weggestuurd
-  if (email !== "adam.akkay@student.ehb.be") {
+  if (email !== "adam.akkay@hotmail.com") {
     redirect("/"); 
   }
 
