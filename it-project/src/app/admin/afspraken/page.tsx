@@ -1,130 +1,134 @@
 // src/app/admin/afspraken/page.tsx
 
 import React from 'react';
-import { MoreVertical } from 'lucide-react';
+import { prisma } from "@/lib/db";
+import Link from "next/link";
+import { Calendar, Clock, User, Building2, ArrowUpRight } from 'lucide-react';
 
-// --- Datastructuur ---
-interface Appointment {
-  id: number;
-  professional: string; // Naam van de Kliniek/Professional
-  client: string; // Naam van de Klant
-  dateTime: string; // Datum en Tijd, opgemaakt als "DD-MM-YYYY\nHH:MM"
-  status: 'Bevestigd' | 'Voltooid' | 'No-show';
-  source: 'Voice' | 'Web' | 'Handmatig';
-}
-
-const mockData: Appointment[] = [
-  { id: 1, professional: 'Dental Clinic Amsterdam', client: 'Sarah Bakker', dateTime: '5-12-2024\n10:00', status: 'Bevestigd', source: 'Voice' },
-  { id: 2, professional: 'Tandarts De Vries', client: 'Tom Peters', dateTime: '5-12-2024\n14:30', status: 'Bevestigd', source: 'Web' },
-  { id: 3, professional: 'Rotterdam Dental Care', client: 'Anna de Jong', dateTime: '4-12-2024\n09:00', status: 'Voltooid', source: 'Voice' },
-  { id: 4, professional: 'Dental Clinic Amsterdam', client: 'Lisa van Dijk', dateTime: '3-12-2024\n11:00', status: 'No-show', source: 'Voice' },
-];
-
-// --- Hulpfuncties ---
-
-const getStatusClasses = (status: Appointment['status']) => {
-  switch (status) {
-    case 'Bevestigd':
-      return 'bg-green-600';
-    case 'Voltooid':
-      return 'bg-blue-600'; // Blauw in de afbeelding
-    case 'No-show':
-      return 'bg-gray-500'; // Grijs in de afbeelding
+// Hulpfuncties voor styling
+const getStatusClasses = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'bevestigd':
+      return 'bg-green-500/10 text-green-500 border border-green-500/20';
+    case 'voltooid':
+      return 'bg-blue-500/10 text-blue-500 border border-blue-500/20';
+    case 'no-show':
+      return 'bg-gray-500/10 text-gray-400 border border-gray-500/20';
     default:
-      return 'bg-gray-500';
+      return 'bg-orange-500/10 text-orange-500 border border-orange-500/20';
   }
 };
 
-const getSourceClasses = (source: Appointment['source']) => {
-  if (source === 'Voice') return 'bg-orange-600';
-  if (source === 'Web') return 'bg-purple-600';
-  return 'bg-gray-600';
-};
+export default async function AfsprakenPage() {
+  // Haal alle afspraken op inclusief de gekoppelde klant en werknemer (professional)
+  const afspraken = await prisma.afspraak.findMany({
+    include: {
+      klant: true,
+      werknemer: {
+        include: {
+          bedrijf: true // Om de klinieknaam/bedrijfsnaam te tonen
+        }
+      }
+    },
+    orderBy: {
+      start_datum: 'desc'
+    }
+  });
 
-// --- Componenten ---
+return (
+    <div className="p-8 bg-[#0B0F1A] min-h-screen text-white">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">Afspraken Overzicht</h1>
+        <p className="text-gray-400 mt-1">Klik op een professional of klant voor meer details</p>
+      </header>
 
-// Component voor één rij in de tabel
-const AppointmentRow: React.FC<{ appointment: Appointment }> = ({ appointment }) => {
-  const [date, time] = appointment.dateTime.split('\n');
+      <div className="bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl border border-[#333]">
+        <table className="w-full text-left border-collapse">
+          <thead className="bg-[#121212] border-b border-[#333] text-gray-500 text-[11px] uppercase tracking-widest font-bold">
+            <tr>
+              <th className="px-6 py-4">Professional / Bedrijf</th>
+              <th className="px-6 py-4">Klant Gegevens</th>
+              <th className="px-6 py-4 text-center">Datum & Tijd</th>
+              <th className="px-6 py-4 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#333]">
+            {afspraken.map((appt) => {
+              const startDatum = new Date(appt.start_datum);
+              
+              return (
+                <tr key={appt.afspraak_id} className="hover:bg-[#252525] transition-all group">
+                  
+                  {/* LINK NAAR BEDRIJF */}
+                  <td className="px-6 py-4">
+                    <Link 
+                      href={`/admin/bedrijven/${appt.werknemer.bedrijf_id}`}
+                      className="flex items-center gap-3 group/link w-fit"
+                    >
+                      <div className="p-2 bg-blue-500/5 rounded-lg text-blue-400 group-hover/link:bg-blue-500/20 transition-colors">
+                        <Building2 size={16} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm text-gray-200 group-hover/link:text-[#ff7a2d] flex items-center gap-1 transition-colors">
+                          {appt.werknemer.voornaam} {appt.werknemer.naam}
+                          <ArrowUpRight size={12} className="opacity-0 group-hover/link:opacity-100 transition-opacity" />
+                        </p>
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">{appt.werknemer.bedrijf.naam}</p>
+                      </div>
+                    </Link>
+                  </td>
 
-  return (
-    // De kolomverdeling is grid-cols-7
-    <div className="grid grid-cols-7 gap-4 items-center py-3 px-1 border-b border-[#333] hover:bg-[#2c2c2c] transition-colors">
-      
-      {/* Kolom 1: ID */}
-      <div className="text-sm font-semibold text-gray-500">#{appointment.id}</div>
-      
-      {/* Kolom 2: Professional (Klinieknaam) */}
-      <div className="text-sm font-semibold text-white">{appointment.professional}</div>
+                  {/* LINK NAAR KLANT */}
+                  <td className="px-6 py-4">
+                    <Link 
+                      href={`/admin/klanten/${appt.klant_id}`}
+                      className="flex items-center gap-3 group/klant w-fit"
+                    >
+                      <div className="p-2 bg-slate-800 rounded-full text-gray-400 group-hover/klant:text-[#ff7a2d] transition-colors">
+                        <User size={16} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-300 group-hover/klant:text-white transition-colors">
+                          {appt.klant.voornaam} {appt.klant.naam}
+                        </p>
+                        <p className="text-[10px] text-gray-500">{appt.klant.email}</p>
+                      </div>
+                    </Link>
+                  </td>
 
-      {/* Kolom 3: Klant */}
-      <div className="text-sm text-gray-400">{appointment.client}</div>
+                  {/* Datum & Tijd */}
+                  <td className="px-6 py-4 text-center">
+                    <div className="inline-flex flex-col items-center">
+                      <span className="text-sm font-bold flex items-center gap-1.5 text-gray-200">
+                        <Calendar size={13} className="text-[#ff7a2d]" />
+                        {startDatum.toLocaleDateString('nl-BE')}
+                      </span>
+                      <span className="text-[11px] text-gray-500 font-mono">
+                        {startDatum.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </td>
 
-      {/* Kolom 4: Datum & Tijd */}
-      <div className="text-center text-sm">
-        <p className="font-semibold text-white">{date}</p>
-        <p className="text-xs text-gray-500">{time}</p>
-      </div>
+                  {/* Status */}
+                  <td className="px-6 py-4 text-center">
+                    <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${getStatusClasses(appt.status)}`}>
+                      {appt.status}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
-      {/* Kolom 5: Status */}
-      <div className="text-center">
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusClasses(appointment.status)}`}>
-          {appointment.status}
-        </span>
-      </div>
-      
-      {/* Kolom 6: Bron */}
-      <div className="text-center">
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getSourceClasses(appointment.source)}`}>
-          {appointment.source}
-        </span>
-      </div>
-      
-      {/* Kolom 7: Acties */}
-      <div className="text-center">
-        {/* Drie puntjes icoon */}
-        <button className="p-1 text-gray-400 hover:text-white rounded-full transition-colors">
-          <MoreVertical size={18} />
-        </button>
+        {afspraken.length === 0 && (
+          <div className="p-20 text-center text-gray-500 italic">
+            Geen afspraken gevonden in de database.
+          </div>
+        )}
       </div>
     </div>
   );
-};
+}
 
-// Hoofd Afspraken Pagina Component
-const AfsprakenPage: React.FC = () => {
-  return (
-    <div className="p-6"> 
-      
-      {/* Header (Titel) */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Afspraken Beheer</h1>
-        <p className="text-gray-400">Alle afspraken in het systeem</p>
-      </div>
-      
-      {/* Tabel Container */}
-      <div className="bg-[#1e1e1e] rounded-xl p-4 shadow-lg border border-[#333]">
-        
-        {/* Tabel Headers (grid-cols-7) */}
-        <div className="grid grid-cols-7 gap-4 font-semibold text-sm text-gray-400 pb-2 border-b border-[#333] px-1">
-          <div className="col-span-1">ID</div>
-          <div className="col-span-1">Professional</div>
-          <div className="col-span-1">Klant</div>
-          <div className="col-span-1 text-center">Datum & Tijd</div>
-          <div className="col-span-1 text-center">Status</div>
-          <div className="col-span-1 text-center">Bron</div>
-          <div className="col-span-1 text-center">Acties</div>
-        </div>
-        
-        {/* Tabel Rijen */}
-        <div>
-          {mockData.map(appt => (
-            <AppointmentRow key={appt.id} appointment={appt} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default AfsprakenPage;
+// export default AfsprakenPage;
