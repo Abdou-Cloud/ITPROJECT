@@ -1,5 +1,7 @@
 // "use client";
 
+// npx prisma db push - om problemen op te lossen
+
 import React from 'react';
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
