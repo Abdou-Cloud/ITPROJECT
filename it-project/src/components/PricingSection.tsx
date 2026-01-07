@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { PricingTable } from "@clerk/nextjs";
 
 interface PricingFeature {
   text: string;
@@ -128,33 +129,11 @@ export function PricingSection() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <PricingPlan
-          name="Starter"
-          target="Voor kleine bedrijven en zelfstandigen"
-          price="€29"
-          features={starterFeatures}
-          buttonText="Start Gratis Proefperiode"
-        />
-        <PricingPlan
-          name="Professional"
-          badge="POPULAIR"
-          target="Voor groeiende bedrijven"
-          price="€79"
-          features={professionalFeatures}
-          buttonText="Kies Professional"
-          highlighted={true}
-        />
-        <PricingPlan
-          name="Enterprise"
-          target="Voor grote organisaties"
-          price="€199"
-          features={enterpriseFeatures}
-          buttonText="Neem Contact Op"
-          buttonVariant="default"
-          isContactButton={true}
-        />
-      </div>
+      
+
+          <PricingTable />
+        
+
     </section>
   );
 }
