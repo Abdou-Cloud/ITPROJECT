@@ -2,7 +2,7 @@
 
 import { Search } from 'lucide-react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useDebouncedCallback } from 'use-debounce'; // Installeer eventueel: npm i use-debounce
+import { useDebouncedCallback } from 'use-debounce'; // !! Installeer : npm i use-debounce
 
 export default function SearchInput() {
   const searchParams = useSearchParams();
