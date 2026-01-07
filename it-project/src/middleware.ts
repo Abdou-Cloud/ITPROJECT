@@ -40,7 +40,7 @@ export default clerkMiddleware(async (auth, req) => {
       (e) => e.id === user.primaryEmailAddressId
     )?.emailAddress;
 
-    const isAdam = email === 'adam.akkay@student.ehb.be';
+    const isAdam = email === 'adam.akkay@hotmail.com';
     const userType = user.publicMetadata?.userType as string | undefined;
 
     // 3. Forceer om naar /admin te gaan
@@ -53,12 +53,12 @@ export default clerkMiddleware(async (auth, req) => {
       return NextResponse.redirect(new URL('/business/dashboard', req.url));
     }
 
-    // 3. Blokkeer business routes voor klanten
+    // 5. Blokkeer business routes voor klanten
     if (isBusinessRoute(req) && userType === 'client') {
       return NextResponse.redirect(new URL('/assistant', req.url));
     }
 
-    // 4. Blokkeer client routes voor business gebruikers (tenzij ze geen type hebben)
+    // 6. Blokkeer client routes voor business gebruikers (tenzij ze geen type hebben)
     if (isClientRoute(req) && userType === 'business') {
       return NextResponse.redirect(new URL('/business/dashboard', req.url));
     }
