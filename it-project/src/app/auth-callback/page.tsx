@@ -19,7 +19,7 @@ function AuthCallbackContent() {
       const intendedType = searchParams.get("type"); // "business" of "client"
 
       // Controleer of het een admin is
-      if (email === "adam.akkay@student.ehb.be") {
+      if (email === "adam.akkay@hotmail.com") {
         router.push("/admin");
         return;
       }
