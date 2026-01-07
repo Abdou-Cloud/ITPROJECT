@@ -18,7 +18,7 @@ import {
 // Menu-items - De 'isActive' prop is hier verwijderd, deze wordt dynamisch bepaald.
 const menuItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Professionals', href: '/admin/professionals', icon: Users },
+  { name: 'Bedrijven', href: '/admin/bedrijven', icon: Users },
   { name: 'Klanten', href: '/admin/klanten', icon: User },
   { name: 'Afspraken', href: '/admin/afspraken', icon: Calendar },
   { name: 'AI Management', href: '/admin/ai', icon: Brain },
@@ -50,7 +50,7 @@ const NavLink: React.FC<NavLinkProps> = ({ name, href, Icon, isActive }) => {
 };
 
 const Sidebar: React.FC = () => {
-  const pathname = usePathname(); // 🚨 Dit leest de huidige URL (/admin of /admin/professionals)
+  const pathname = usePathname(); // Dit leest de huidige URL (/admin of /admin/bedrijven)
   const activeItem = pathname;
 
   return (
