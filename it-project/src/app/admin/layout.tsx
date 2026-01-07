@@ -3,6 +3,7 @@ import Sidebar from "@/components/admin/Sidebar";
 import Topbar from "@/components/admin/Topbar";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db"; // Importeer prisma
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   // 1. Haal de ingelogde gebruiker op via Clerk (Server-side)
@@ -11,10 +12,20 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // 2. Haal het e-mailadres op
   const email = user?.primaryEmailAddress?.emailAddress;
 
-  // 3. De Hardcoded Check: Alleen jouw e-mailadres krijgt toegang
-  // Iedereen die niet 'adam.akkay@hotmail.com' is, wordt direct weggestuurd
+  // 3. De Hardcoded Check
   if (email !== "adam.akkay@hotmail.com") {
     redirect("/"); 
+  }
+
+  // 4. Database Status Check
+  let isDbConnected = false;
+  try {
+    // We doen een hele lichte check om de verbinding te verifiëren
+    await prisma.$queryRaw`SELECT 1`;
+    isDbConnected = true;
+  } catch (error) {
+    console.error("Database status check failed in layout:", error);
+    isDbConnected = false;
   }
 
   return (
@@ -22,10 +33,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       {/* Sidebar is Fixed */}
       <Sidebar />
 
-      {/* Content container met margin-left voor de Sidebar ruimte */}
+      {/* Content container */}
       <div className="flex flex-col flex-1 ml-64"> 
-        <Topbar />
-        {/* De achtergrondkleur hier zorgt ervoor dat je nooit wit ziet bij het scrollen */}
+        {/* Geef de status door aan de Topbar component */}
+        <Topbar isDbConnected={isDbConnected} />
+        
         <main className="flex-1 bg-[#0B0F1A]">
           {children}
         </main> 

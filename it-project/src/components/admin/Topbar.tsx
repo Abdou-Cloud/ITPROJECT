@@ -1,55 +1,71 @@
 "use client";
 
 import React from 'react';
-import { Search } from 'lucide-react';
+import { ShieldCheck, Activity } from 'lucide-react';
 import { UserButton, useUser } from "@clerk/nextjs";
 
-const Topbar: React.FC = () => {
+interface TopbarProps {
+  isDbConnected: boolean;
+}
+
+const Topbar: React.FC<TopbarProps> = ({ isDbConnected }) => {
   const { user } = useUser();
 
   return (
-    <header className="flex justify-between items-center bg-[#0b0e14] p-4 border-b border-gray-800 sticky top-0 z-20">
+    <header className="flex justify-between items-center bg-[#0b0f1a]/80 backdrop-blur-md p-4 border-b border-white/5 sticky top-0 z-30 px-8">
       
-      {/* Zoekbalk */}
-      <div className="flex items-center bg-[#11161d] border border-gray-800 rounded-lg px-3 py-2 w-full max-w-xl transition-focus-within focus-within:border-orange-500/50">
-        <Search size={18} className="text-gray-500 mr-3" />
-        <input 
-          type="text" 
-          placeholder="Zoek in het systeem..." 
-          className="bg-transparent text-sm text-white w-full focus:outline-none placeholder:text-gray-600"
-        />
+      {/* Linkerkant: Branding/Systeem info */}
+      <div className="flex items-center space-x-4">
+        <div className="bg-orange-500/10 p-2 rounded-lg border border-orange-500/20">
+          <ShieldCheck size={20} className="text-[#ff7a2d]" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-white tracking-tight uppercase">Admin Console</h2>
+          <p className="text-[10px] text-gray-500 font-medium">SchedulAI</p>
+        </div>
       </div>
 
       {/* Rechterkant: Status & Clerk User */}
-      <div className="flex items-center space-x-6 flex-shrink-0">
+      <div className="flex items-center space-x-8">
         
-        {/* Systeem Status Badge */}
-        <div className="hidden md:flex items-center bg-green-500/5 border border-green-500/20 px-3 py-1 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-          <span className="text-[11px] font-medium text-green-500 uppercase tracking-wider">Systeem Online</span>
+        {/* Systeem Status Badge - NU DYNAMISCH */}
+        <div className={`hidden lg:flex items-center space-x-4 px-4 py-2 rounded-xl border shadow-inner transition-all duration-300 ${
+          isDbConnected ? 'bg-green-500/5 border-green-500/10' : 'bg-red-500/5 border-red-500/10'
+        }`}>
+          <div className="flex flex-col items-end">
+            <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-none">Database</span>
+            <span className={`text-[11px] font-bold mt-1 ${isDbConnected ? 'text-green-400' : 'text-red-400'}`}>
+              {isDbConnected ? 'OPERATIONAL' : 'OFFLINE'}
+            </span>
+          </div>
+          <div className="relative flex items-center justify-center">
+            {isDbConnected ? (
+              <>
+                <span className="absolute w-3 h-3 rounded-full bg-green-500/20 animate-ping"></span>
+                <Activity size={16} className="text-green-500 relative" />
+              </>
+            ) : (
+              <Activity size={16} className="text-red-500 relative opacity-50" />
+            )}
+          </div>
         </div>
 
-        {/* Gebruikersinfo & Clerk Button */}
-        <div className="flex items-center space-x-4 pl-6 border-l border-gray-800">
+        {/* Gebruikersprofiel Sectie */}
+        <div className="flex items-center space-x-4 pl-8 border-l border-white/10">
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-semibold text-white">
+            <p className="text-sm font-bold text-gray-100 leading-none">
               {user?.fullName || "Admin User"}
-            </p>
-            <p className="text-[10px] text-gray-500 font-mono">
-              {user?.primaryEmailAddress?.emailAddress || "admin@schedulai.be"}
             </p>
           </div>
           
-          {/* De Clerk UserButton vervangt de statische "AD" div */}
-          <div className="flex items-center justify-center">
+          <div className="flex items-center">
             <UserButton 
               afterSignOutUrl="/" 
               appearance={{
                 elements: {
-                  userButtonAvatarBox: "w-10 h-10 border border-orange-500/30 hover:scale-105 transition-transform",
-                  userButtonPopoverCard: "bg-[#11161d] border border-gray-800 text-white",
+                  userButtonAvatarBox: "w-11 h-11 border-2 border-[#ff7a2d]/40 hover:border-[#ff7a2d] transition-all shadow-lg",
+                  userButtonPopoverCard: "bg-[#11161d] border border-gray-800 text-white shadow-2xl",
                   userButtonPopoverActionButtonText: "text-gray-300",
-                  userButtonPopoverFooter: "hidden" // Verbergt de "Secured by Clerk" als je dat wilt
                 }
               }}
             />
