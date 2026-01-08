@@ -11,7 +11,7 @@ import {
   Calendar, 
   Brain, 
   CreditCard, 
-  Settings, 
+  //Settings, 
   LogOut 
 } from 'lucide-react';
 
@@ -51,7 +51,6 @@ const NavLink: React.FC<NavLinkProps> = ({ name, href, Icon, isActive }) => {
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname(); // Dit leest de huidige URL (/admin of /admin/bedrijven)
-  const activeItem = pathname;
 
   return (
     <aside className="w-64 bg-[#1e1e1e] h-screen flex flex-col fixed top-0 left-0 z-10 shadow-xl">
@@ -84,17 +83,8 @@ const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* 3. Footer Links (Instellingen en Uitloggen) */}
+      {/* 3. Footer Links - Enkel Uitloggen blijft over */}
       <div className="p-5 space-y-2 border-t border-[#333] mt-auto">
-        {/* Instellingen link */}
-        <NavLink 
-          name="Instellingen"
-          href="/admin/instellingen"
-          Icon={Settings}
-          // Controleer of de huidige route begint met /admin/instellingen
-          isActive={pathname.startsWith('/admin/instellingen')}
-        />
-        {/* Werkende Uitloggen knop via Clerk */}
         <SignOutButton redirectUrl="/">
           <button className="flex items-center w-full p-3 rounded-lg transition-colors duration-200 text-gray-400 hover:bg-[#2c2c2c] hover:text-white group">
             <LogOut size={20} className="mr-4 text-gray-400 group-hover:text-white" />
