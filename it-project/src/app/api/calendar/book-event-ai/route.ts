@@ -116,6 +116,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if booking time falls within werknemer's beschikbaarheden
+    const dayNames = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+    const dayOfWeek = dayNames[startDateTime.getDay()];
+    
+    const beschikbaarheden = await prisma.beschikbaarheid.findMany({
+      where: {
+        werknemer_id: werknemer.werknemer_id,
+        dag: dayOfWeek,
+      },
+      select: {
+        start_tijd: true,
+        eind_tijd: true,
+      },
+    });
+
+    if (beschikbaarheden.length === 0) {
+      return NextResponse.json(
+        { error: "Werknemer is niet beschikbaar op deze dag" },
+        { status: 400 },
+      );
+    }
+
+    // Check if booking time falls within any beschikbaarheid window
+    // Gebruik lokale tijd voor consistentie (seed gebruikt lokale tijd zonder Z)
+    const bookingStartHour = startDateTime.getHours();
+    const bookingStartMinute = startDateTime.getMinutes();
+    const bookingEndHour = endDateTime.getHours();
+    const bookingEndMinute = endDateTime.getMinutes();
+
+    const isWithinBeschikbaarheid = beschikbaarheden.some((beschikbaarheid) => {
+      const beschikbaarheidStart = new Date(beschikbaarheid.start_tijd);
+      const beschikbaarheidEnd = new Date(beschikbaarheid.eind_tijd);
+      
+      // Gebruik lokale tijd voor beschikbaarheden (consistent met seed)
+      const beschikbaarheidStartHour = beschikbaarheidStart.getHours();
+      const beschikbaarheidStartMinute = beschikbaarheidStart.getMinutes();
+      const beschikbaarheidEndHour = beschikbaarheidEnd.getHours();
+      const beschikbaarheidEndMinute = beschikbaarheidEnd.getMinutes();
+
+      // Convert to minutes for easier comparison
+      const bookingStartMinutes = bookingStartHour * 60 + bookingStartMinute;
+      const bookingEndMinutes = bookingEndHour * 60 + bookingEndMinute;
+      const beschikbaarheidStartMinutes = beschikbaarheidStartHour * 60 + beschikbaarheidStartMinute;
+      const beschikbaarheidEndMinutes = beschikbaarheidEndHour * 60 + beschikbaarheidEndMinute;
+
+      // Check if booking is completely within beschikbaarheid window
+      return bookingStartMinutes >= beschikbaarheidStartMinutes && 
+             bookingEndMinutes <= beschikbaarheidEndMinutes;
+    });
+
+    if (!isWithinBeschikbaarheid) {
+      return NextResponse.json(
+        { error: "Dit tijdslot valt buiten de beschikbaarheid van de werknemer" },
+        { status: 400 },
+      );
+    }
+
     // Overlap check
     const overlappingAppointment = await prisma.afspraak.findFirst({
       where: {

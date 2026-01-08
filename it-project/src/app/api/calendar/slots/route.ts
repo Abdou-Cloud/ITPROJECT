@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 interface TimeSlot {
@@ -10,26 +9,22 @@ interface TimeSlot {
 
 /**
  * GET /api/calendar/slots
- * Returns available time slots from Beschikbaarheid table for a given employee and date.
+ * Returns available time slots based on Beschikbaarheid table for a given employee and date.
  * 
  * Query parameters:
  * - werknemer_id: Employee ID (required)
  * - date: Date in ISO format (YYYY-MM-DD) (required)
+ * - duration: Duration in minutes (optional, default: 30)
  * 
- * Returns: JSON with werknemer_id, date, and up to 5 available slots
- * Only returns slots where isBeschikbaar = true and not overlapping with Afspraak
+ * Returns: JSON with werknemer_id, date, and available slots
+ * Only returns slots within beschikbaarheden and not overlapping with existing appointments
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Uncomment when ready to add Clerk authentication
-    // const { userId } = await auth();
-    // if (!userId) {
-    //   return NextResponse.json({ error: "Niet geautoriseerd" }, { status: 401 });
-    // }
-
     const searchParams = request.nextUrl.searchParams;
     const werknemerId = searchParams.get("werknemer_id");
     const date = searchParams.get("date");
+    const duration = parseInt(searchParams.get("duration") || "30", 10);
 
     // Validation
     if (!werknemerId || !date) {
@@ -59,7 +54,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse the date and set boundaries for the day
+    // Parse the date
     const selectedDate = new Date(date);
     if (isNaN(selectedDate.getTime())) {
       return NextResponse.json(
@@ -68,31 +63,36 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get day of week name in Dutch
+    const dayNames = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+    const dayOfWeek = dayNames[selectedDate.getDay()];
+
+    // Step 1: Get beschikbaarheden for this werknemer on this day of week
+    const beschikbaarheden = await prisma.beschikbaarheid.findMany({
+      where: {
+        werknemer_id: werknemerIdNum,
+        dag: dayOfWeek,
+      },
+      select: {
+        start_tijd: true,
+        eind_tijd: true,
+      },
+    });
+
+    if (beschikbaarheden.length === 0) {
+      return NextResponse.json({
+        werknemer_id: werknemerIdNum,
+        date: date,
+        slots: [],
+      });
+    }
+
+    // Step 2: Get existing appointments for this day
     const startOfDay = new Date(selectedDate);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(selectedDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // Step 1: Query Beschikbaarheid table for available slots
-    const beschikbaarheden = await prisma.beschikbaarheid.findMany({
-      where: {
-        werknemerId: werknemerIdNum,
-        start_datum: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        isBeschikbaar: true,
-      },
-      select: {
-        start_datum: true,
-        eind_datum: true,
-      },
-      orderBy: {
-        start_datum: "asc",
-      },
-    });
-
-    // Step 2: Query Afspraak table to get booked appointments
     const existingAppointments = await prisma.afspraak.findMany({
       where: {
         werknemer_id: werknemerIdNum,
@@ -110,42 +110,74 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Step 3: Filter out slots that overlap with existing appointments
+    // Step 3: Generate time slots from beschikbaarheden
     const now = new Date();
     const availableSlots: TimeSlot[] = [];
 
     for (const beschikbaarheid of beschikbaarheden) {
-      const slotStart = new Date(beschikbaarheid.start_datum);
-      const slotEnd = new Date(beschikbaarheid.eind_datum);
+      // Extract time from beschikbaarheid (start_tijd and eind_tijd contain time info)
+      // Gebruik UTC tijd om consistent te zijn met de seed data
+      const beschikbaarheidStart = new Date(beschikbaarheid.start_tijd);
+      const beschikbaarheidEnd = new Date(beschikbaarheid.eind_tijd);
 
-      // Skip slots in the past
-      if (slotStart < now) {
-        continue;
-      }
+      // Get hours and minutes from beschikbaarheid
+      // Gebruik lokale tijd omdat de seed lokale tijd gebruikt (zonder Z suffix)
+      const startHour = beschikbaarheidStart.getHours();
+      const startMinute = beschikbaarheidStart.getMinutes();
+      const endHour = beschikbaarheidEnd.getHours();
+      const endMinute = beschikbaarheidEnd.getMinutes();
 
-      // Check if slot overlaps with any existing appointment
-      const hasOverlap = existingAppointments.some((appointment: { start_datum: Date; eind_datum: Date }) => {
-        const appStart = new Date(appointment.start_datum);
-        const appEnd = new Date(appointment.eind_datum);
-        
-        // Check for overlap: slot starts before appointment ends AND slot ends after appointment starts
-        return slotStart < appEnd && slotEnd > appStart;
-      });
+      // Create slots for the selected date (gebruik lokale tijd)
+      const slotDate = new Date(selectedDate);
+      slotDate.setHours(startHour, startMinute, 0, 0);
+      const endDate = new Date(selectedDate);
+      endDate.setHours(endHour, endMinute, 0, 0);
 
-      // Only include slots without overlaps
-      if (!hasOverlap) {
-        availableSlots.push({
-          start: slotStart.toISOString(),
-          end: slotEnd.toISOString(),
-          available: true,
-        });
+      // Generate slots in duration intervals
+      let currentSlotStart = new Date(slotDate);
+      
+      while (currentSlotStart < endDate) {
+        const currentSlotEnd = new Date(currentSlotStart);
+        currentSlotEnd.setMinutes(currentSlotEnd.getMinutes() + duration);
 
-        // Limit to 5 slots per request
-        if (availableSlots.length >= 5) {
+        // Check if slot fits within beschikbaarheid window
+        if (currentSlotEnd > endDate) {
           break;
         }
+
+        // Skip slots in the past
+        if (currentSlotStart < now) {
+          currentSlotStart.setMinutes(currentSlotStart.getMinutes() + duration);
+          continue;
+        }
+
+        // Check if slot overlaps with any existing appointment
+        const hasOverlap = existingAppointments.some((appointment) => {
+          const appStart = new Date(appointment.start_datum);
+          const appEnd = new Date(appointment.eind_datum);
+          
+          // Check for overlap
+          return currentSlotStart < appEnd && currentSlotEnd > appStart;
+        });
+
+        // Only include slots without overlaps
+        if (!hasOverlap) {
+          availableSlots.push({
+            start: currentSlotStart.toISOString(),
+            end: currentSlotEnd.toISOString(),
+            available: true,
+          });
+        }
+
+        // Move to next slot
+        currentSlotStart.setMinutes(currentSlotStart.getMinutes() + duration);
       }
     }
+
+    // Sort slots by start time
+    availableSlots.sort((a, b) => 
+      new Date(a.start).getTime() - new Date(b.start).getTime()
+    );
 
     // Step 4: Return JSON response
     return NextResponse.json({

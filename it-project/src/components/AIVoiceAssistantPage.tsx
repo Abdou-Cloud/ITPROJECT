@@ -115,14 +115,7 @@ function toHHMM(d: Date) {
   return `${hh}:${mm}`;
 }
 
-function buildSlots() {
-  // vaste slots zoals je mock (kan je later aanpassen)
-  return [
-    "09:00","09:30","10:00","10:30","11:00","11:30",
-    "13:00","13:30","14:00","14:30","15:00","15:30",
-    "16:00","16:30","17:00",
-  ];
-}
+// buildSlots functie verwijderd - we gebruiken nu beschikbare slots van de API
 
 export default function AIVoiceAssistantPage() {
   // Vapi call hook voor AI voice assistant
@@ -169,7 +162,8 @@ export default function AIVoiceAssistantPage() {
   const [loadingAfspraken, setLoadingAfspraken] = useState(false);
   const [booking, setBooking] = useState(false);
   const [refreshCounter, setRefreshCounter] = useState(0);
-  const slots = useMemo(() => buildSlots(), []);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Bedrijfstypes laden bij mount
   useEffect(() => {
@@ -244,39 +238,57 @@ export default function AIVoiceAssistantPage() {
   }, [bedrijfId]);
 
   useEffect(() => {
-    // afspraken laden wanneer werknemerId + date gekozen zijn
-    const loadAfspraken = async () => {
+    // Beschikbare slots laden wanneer werknemerId + date gekozen zijn
+    const loadAvailableSlots = async () => {
       setBusyStarts(new Set());
       setSelectedTime("");
       setManualSuccess("");
+      setAvailableSlots([]);
       if (werknemerId === "" || !date) return;
 
-      setLoadingAfspraken(true);
+      setLoadingSlots(true);
       setManualError("");
       try {
+        // Haal beschikbare slots op via de API
+        const slotsRes = await fetch(
+          `/api/calendar/slots?werknemer_id=${werknemerId}&date=${encodeURIComponent(date)}&duration=30`
+        );
+        if (!slotsRes.ok) {
+          const j = await slotsRes.json().catch(() => null);
+          throw new Error(j?.error ?? "Beschikbare slots ophalen mislukt");
+        }
+        const slotsData = await slotsRes.json();
+        
+        // Converteer slots naar tijd strings (HH:MM)
+        const slotTimes = slotsData.slots.map((slot: { start: string }) => {
+          const start = new Date(slot.start);
+          return toHHMM(start);
+        });
+        setAvailableSlots(slotTimes);
+
+        // Haal ook bezette afspraken op voor visuele feedback
         const res = await fetch(
           `/api/afspraken?werknemerId=${werknemerId}&date=${encodeURIComponent(date)}`
         );
-        if (!res.ok) {
-          const j = await res.json().catch(() => null);
-          throw new Error(j?.error ?? "Afspraken ophalen mislukt");
+        if (res.ok) {
+          const data: AfspraakDTO[] = await res.json();
+          const s = new Set<string>();
+          for (const a of data) {
+            const start = new Date(a.start_datum);
+            s.add(toHHMM(start));
+          }
+          setBusyStarts(s);
         }
-        const data: AfspraakDTO[] = await res.json();
-
-        const s = new Set<string>();
-        for (const a of data) {
-          const start = new Date(a.start_datum);
-          s.add(toHHMM(start));
-        }
-        setBusyStarts(s);
       } catch (e: any) {
-        setManualError(e?.message ?? "Fout bij ophalen afspraken");
+        setManualError(e?.message ?? "Fout bij ophalen beschikbare slots");
+        setAvailableSlots([]);
       } finally {
+        setLoadingSlots(false);
         setLoadingAfspraken(false);
       }
     };
 
-    loadAfspraken();
+    loadAvailableSlots();
   }, [werknemerId, date, refreshCounter]);
 
   const canBook = werknemerId !== "" && !!date && !!selectedTime && !booking;
@@ -720,28 +732,34 @@ export default function AIVoiceAssistantPage() {
                   </p>
 
                   <div className="grid grid-cols-3 gap-2">
-                    {slots.map((time) => {
-                      const disabled = werknemerId === "" || !date || busyStarts.has(time);
-                      const active = selectedTime === time;
+                    {loadingSlots ? (
+                      <p className="col-span-3 text-xs text-slate-400 mt-2 text-center">Beschikbare slots laden...</p>
+                    ) : availableSlots.length === 0 ? (
+                      <p className="col-span-3 text-xs text-slate-400 mt-2 text-center">Geen beschikbare slots op deze dag</p>
+                    ) : (
+                      availableSlots.map((time) => {
+                        const disabled = werknemerId === "" || !date || busyStarts.has(time);
+                        const active = selectedTime === time;
 
-                      return (
-                        <button
-                          key={time}
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => setSelectedTime(time)}
-                          className={[
-                            "rounded-lg px-3 py-2 text-sm transition border",
-                            disabled
-                              ? "bg-slate-950/30 text-slate-600 border-slate-800 cursor-not-allowed"
-                              : "bg-slate-900/60 text-slate-200 border-slate-800 hover:bg-slate-800 hover:text-white",
-                            active ? "bg-orange-500 text-white border-orange-500 hover:bg-orange-500" : "",
-                          ].join(" ")}
-                        >
-                          {time}
-                        </button>
-                      );
-                    })}
+                        return (
+                          <button
+                            key={time}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => setSelectedTime(time)}
+                            className={[
+                              "rounded-lg px-3 py-2 text-sm transition border",
+                              disabled
+                                ? "bg-slate-950/30 text-slate-600 border-slate-800 cursor-not-allowed"
+                                : "bg-slate-900/60 text-slate-200 border-slate-800 hover:bg-slate-800 hover:text-white",
+                              active ? "bg-orange-500 text-white border-orange-500 hover:bg-orange-500" : "",
+                            ].join(" ")}
+                          >
+                            {time}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
 
                   <div className="mt-4">

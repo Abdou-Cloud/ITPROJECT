@@ -1,11 +1,13 @@
-import { PrismaClient } from "../src/generated/prisma";
+// prisma/seed.ts (of waar jouw seed file staat)
+
+import { PrismaClient } from "../src/generated/prisma"; // pas aan als jouw output pad anders is
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Starting seed...");
-
-  // Create companies
+  // =========================
+  // 1) BEDRIJVEN
+  // =========================
   const smileCare = await prisma.bedrijf.upsert({
     where: { bedrijf_id: 1 },
     update: {},
@@ -50,13 +52,24 @@ async function main() {
     },
   });
 
-  // Create employees for Tandartsenpraktijk SmileCare
+  // =========================
+  // 2) WERKNEMERS
+  //    - Upsert op unieke email
+  //    - werknemer_id NIET zetten
+  // =========================
+
+  // SmileCare werknemers
   const werknemersSmileCare = await Promise.all([
     prisma.werknemer.upsert({
-      where: { clerkUserId: "smilecare_tandarts_1" },
-      update: {},
+      where: { email: "j.devries@smilecare.nl" },
+      update: {
+        voornaam: "Jan",
+        naam: "de Vries",
+        telefoonnummer: "06-11111111",
+        geboorte_datum: new Date("1980-05-15"),
+        bedrijf_id: smileCare.bedrijf_id,
+      },
       create: {
-        clerkUserId: "smilecare_tandarts_1",
         voornaam: "Jan",
         naam: "de Vries",
         email: "j.devries@smilecare.nl",
@@ -66,10 +79,15 @@ async function main() {
       },
     }),
     prisma.werknemer.upsert({
-      where: { clerkUserId: "smilecare_tandarts_2" },
-      update: {},
+      where: { email: "m.jansen@smilecare.nl" },
+      update: {
+        voornaam: "Maria",
+        naam: "Jansen",
+        telefoonnummer: "06-22222222",
+        geboorte_datum: new Date("1985-08-20"),
+        bedrijf_id: smileCare.bedrijf_id,
+      },
       create: {
-        clerkUserId: "smilecare_tandarts_2",
         voornaam: "Maria",
         naam: "Jansen",
         email: "m.jansen@smilecare.nl",
@@ -79,10 +97,15 @@ async function main() {
       },
     }),
     prisma.werknemer.upsert({
-      where: { clerkUserId: "smilecare_tandarts_3" },
-      update: {},
+      where: { email: "p.bakker@smilecare.nl" },
+      update: {
+        voornaam: "Pieter",
+        naam: "Bakker",
+        telefoonnummer: "06-33333333",
+        geboorte_datum: new Date("1975-03-10"),
+        bedrijf_id: smileCare.bedrijf_id,
+      },
       create: {
-        clerkUserId: "smilecare_tandarts_3",
         voornaam: "Pieter",
         naam: "Bakker",
         email: "p.bakker@smilecare.nl",
@@ -93,13 +116,18 @@ async function main() {
     }),
   ]);
 
-  // Create employees for Tandheelkundig Centrum BrightTeeth
+  // BrightTeeth werknemers
   const werknemersBrightTeeth = await Promise.all([
     prisma.werknemer.upsert({
-      where: { clerkUserId: "brightteeth_tandarts_1" },
-      update: {},
+      where: { email: "l.vanderberg@brightteeth.nl" },
+      update: {
+        voornaam: "Lisa",
+        naam: "van der Berg",
+        telefoonnummer: "06-44444444",
+        geboorte_datum: new Date("1982-11-25"),
+        bedrijf_id: brightTeeth.bedrijf_id,
+      },
       create: {
-        clerkUserId: "brightteeth_tandarts_1",
         voornaam: "Lisa",
         naam: "van der Berg",
         email: "l.vanderberg@brightteeth.nl",
@@ -109,10 +137,15 @@ async function main() {
       },
     }),
     prisma.werknemer.upsert({
-      where: { clerkUserId: "brightteeth_tandarts_2" },
-      update: {},
+      where: { email: "t.smit@brightteeth.nl" },
+      update: {
+        voornaam: "Tom",
+        naam: "Smit",
+        telefoonnummer: "06-55555555",
+        geboorte_datum: new Date("1988-07-12"),
+        bedrijf_id: brightTeeth.bedrijf_id,
+      },
       create: {
-        clerkUserId: "brightteeth_tandarts_2",
         voornaam: "Tom",
         naam: "Smit",
         email: "t.smit@brightteeth.nl",
@@ -122,10 +155,15 @@ async function main() {
       },
     }),
     prisma.werknemer.upsert({
-      where: { clerkUserId: "brightteeth_tandarts_3" },
-      update: {},
+      where: { email: "e.dewit@brightteeth.nl" },
+      update: {
+        voornaam: "Emma",
+        naam: "de Wit",
+        telefoonnummer: "06-66666666",
+        geboorte_datum: new Date("1990-01-30"),
+        bedrijf_id: brightTeeth.bedrijf_id,
+      },
       create: {
-        clerkUserId: "brightteeth_tandarts_3",
         voornaam: "Emma",
         naam: "de Wit",
         email: "e.dewit@brightteeth.nl",
@@ -136,13 +174,18 @@ async function main() {
     }),
   ]);
 
-  // Create employees for HairStudio Luxe
+  // HairStudio werknemers
   const werknemersHairStudio = await Promise.all([
     prisma.werknemer.upsert({
-      where: { clerkUserId: "hairstudio_kapper_1" },
-      update: {},
+      where: { email: "s.mulder@hairstudioluxe.nl" },
+      update: {
+        voornaam: "Sophie",
+        naam: "Mulder",
+        telefoonnummer: "06-77777777",
+        geboorte_datum: new Date("1992-04-18"),
+        bedrijf_id: hairStudio.bedrijf_id,
+      },
       create: {
-        clerkUserId: "hairstudio_kapper_1",
         voornaam: "Sophie",
         naam: "Mulder",
         email: "s.mulder@hairstudioluxe.nl",
@@ -152,10 +195,15 @@ async function main() {
       },
     }),
     prisma.werknemer.upsert({
-      where: { clerkUserId: "hairstudio_kapper_2" },
-      update: {},
+      where: { email: "m.vandijk@hairstudioluxe.nl" },
+      update: {
+        voornaam: "Mike",
+        naam: "van Dijk",
+        telefoonnummer: "06-88888888",
+        geboorte_datum: new Date("1987-09-05"),
+        bedrijf_id: hairStudio.bedrijf_id,
+      },
       create: {
-        clerkUserId: "hairstudio_kapper_2",
         voornaam: "Mike",
         naam: "van Dijk",
         email: "m.vandijk@hairstudioluxe.nl",
@@ -165,10 +213,15 @@ async function main() {
       },
     }),
     prisma.werknemer.upsert({
-      where: { clerkUserId: "hairstudio_kapper_3" },
-      update: {},
+      where: { email: "a.meijer@hairstudioluxe.nl" },
+      update: {
+        voornaam: "Anna",
+        naam: "Meijer",
+        telefoonnummer: "06-99999999",
+        geboorte_datum: new Date("1995-12-22"),
+        bedrijf_id: hairStudio.bedrijf_id,
+      },
       create: {
-        clerkUserId: "hairstudio_kapper_3",
         voornaam: "Anna",
         naam: "Meijer",
         email: "a.meijer@hairstudioluxe.nl",
@@ -179,13 +232,18 @@ async function main() {
     }),
   ]);
 
-  // Create employees for Kapsalon Trendy
+  // Kapsalon werknemers
   const werknemersKapsalon = await Promise.all([
     prisma.werknemer.upsert({
-      where: { clerkUserId: "kapsalon_kapper_1" },
-      update: {},
+      where: { email: "d.hoekstra@kapsalontrendy.nl" },
+      update: {
+        voornaam: "David",
+        naam: "Hoekstra",
+        telefoonnummer: "06-10101010",
+        geboorte_datum: new Date("1989-06-14"),
+        bedrijf_id: kapsalon.bedrijf_id,
+      },
       create: {
-        clerkUserId: "kapsalon_kapper_1",
         voornaam: "David",
         naam: "Hoekstra",
         email: "d.hoekstra@kapsalontrendy.nl",
@@ -195,10 +253,15 @@ async function main() {
       },
     }),
     prisma.werknemer.upsert({
-      where: { clerkUserId: "kapsalon_kapper_2" },
-      update: {},
+      where: { email: "l.post@kapsalontrendy.nl" },
+      update: {
+        voornaam: "Laura",
+        naam: "Post",
+        telefoonnummer: "06-20202020",
+        geboorte_datum: new Date("1993-10-28"),
+        bedrijf_id: kapsalon.bedrijf_id,
+      },
       create: {
-        clerkUserId: "kapsalon_kapper_2",
         voornaam: "Laura",
         naam: "Post",
         email: "l.post@kapsalontrendy.nl",
@@ -208,10 +271,15 @@ async function main() {
       },
     }),
     prisma.werknemer.upsert({
-      where: { clerkUserId: "kapsalon_kapper_3" },
-      update: {},
+      where: { email: "r.deboer@kapsalontrendy.nl" },
+      update: {
+        voornaam: "Rick",
+        naam: "de Boer",
+        telefoonnummer: "06-30303030",
+        geboorte_datum: new Date("1991-02-08"),
+        bedrijf_id: kapsalon.bedrijf_id,
+      },
       create: {
-        clerkUserId: "kapsalon_kapper_3",
         voornaam: "Rick",
         naam: "de Boer",
         email: "r.deboer@kapsalontrendy.nl",
@@ -222,6 +290,15 @@ async function main() {
     }),
   ]);
 
+  // =========================
+  // 3) BESCHIKBAARHEDEN
+  //    - Maak beschikbaarheden voor alle werknemers
+  //    - Standaard werkweek: maandag t/m vrijdag, 09:00 - 17:00
+  // =========================
+  
+  // Verwijder bestaande beschikbaarheden eerst (optioneel, voor clean seed)
+  await prisma.beschikbaarheid.deleteMany({});
+
   const allWerknemers = [
     ...werknemersSmileCare,
     ...werknemersBrightTeeth,
@@ -229,80 +306,48 @@ async function main() {
     ...werknemersKapsalon,
   ];
 
-  console.log(`Created ${allWerknemers.length} employees`);
-
-  // Generate availability for all employees for the next 30 days
-  const slotDuration = 30; // minutes
-  const startHour = 9;
-  const endHour = 17;
-  const daysToGenerate = 30;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const beschikbaarheden: Array<{
-    werknemerId: number;
-    start_datum: Date;
-    eind_datum: Date;
-    isBeschikbaar: boolean;
-  }> = [];
-
+  // Maak beschikbaarheden voor elke werknemer
   for (const werknemer of allWerknemers) {
-    for (let day = 0; day < daysToGenerate; day++) {
-      const currentDate = new Date(today);
-      currentDate.setDate(currentDate.getDate() + day);
+    // Standaard werkweek: maandag t/m vrijdag, 09:00 - 17:00
+    // Gebruik 2026 datums en zorg dat de tijd correct is
+    // We gebruiken een referentie datum in 2026 en extraheren alleen de tijd (uren/minuten)
+    // De datum zelf is niet belangrijk, alleen de tijd wordt gebruikt voor vergelijking
+    const beschikbaarheden = [
+      { dag: "maandag", start_tijd: new Date("2026-01-05T09:00:00"), eind_tijd: new Date("2026-01-05T17:00:00") },
+      { dag: "dinsdag", start_tijd: new Date("2026-01-06T09:00:00"), eind_tijd: new Date("2026-01-06T17:00:00") },
+      { dag: "woensdag", start_tijd: new Date("2026-01-07T09:00:00"), eind_tijd: new Date("2026-01-07T17:00:00") },
+      { dag: "donderdag", start_tijd: new Date("2026-01-08T09:00:00"), eind_tijd: new Date("2026-01-08T17:00:00") },
+      { dag: "vrijdag", start_tijd: new Date("2026-01-09T09:00:00"), eind_tijd: new Date("2026-01-09T17:00:00") },
+    ];
 
-      // Skip weekends (Saturday = 6, Sunday = 0)
-      const dayOfWeek = currentDate.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        continue;
-      }
-
-      // Generate slots from 09:00 to 17:00
-      const slotStart = new Date(currentDate);
-      slotStart.setHours(startHour, 0, 0, 0);
-
-      const dayEnd = new Date(currentDate);
-      dayEnd.setHours(endHour, 0, 0, 0);
-
-      while (slotStart < dayEnd) {
-        const slotEnd = new Date(slotStart);
-        slotEnd.setMinutes(slotEnd.getMinutes() + slotDuration);
-
-        beschikbaarheden.push({
-          werknemerId: werknemer.werknemer_id,
-          start_datum: new Date(slotStart),
-          eind_datum: new Date(slotEnd),
-          isBeschikbaar: true,
-        });
-
-        slotStart.setMinutes(slotStart.getMinutes() + slotDuration);
-      }
-    }
-  }
-
-  // Delete existing beschikbaarheden to ensure idempotency
-  await prisma.beschikbaarheid.deleteMany({});
-
-  // Create all beschikbaarheden in batches
-  const batchSize = 1000;
-  for (let i = 0; i < beschikbaarheden.length; i += batchSize) {
-    const batch = beschikbaarheden.slice(i, i + batchSize);
     await prisma.beschikbaarheid.createMany({
-      data: batch,
+      data: beschikbaarheden.map(b => ({
+        werknemer_id: werknemer.werknemer_id,
+        dag: b.dag,
+        start_tijd: b.start_tijd,
+        eind_tijd: b.eind_tijd,
+      })),
+      skipDuplicates: true,
     });
-    console.log(`Created ${Math.min(i + batchSize, beschikbaarheden.length)}/${beschikbaarheden.length} availability slots`);
   }
 
-  console.log(`Seed completed. Created ${beschikbaarheden.length} availability slots.`);
+  console.log("✅ Seed klaar:");
+  console.log("  - Bedrijven: 4");
+  console.log("  - Werknemers: 12");
+  console.log("  - Beschikbaarheden: 60 (5 dagen × 12 werknemers)");
+  console.log("SmileCare werknemers:", werknemersSmileCare.map(w => w.werknemer_id));
+  console.log("BrightTeeth werknemers:", werknemersBrightTeeth.map(w => w.werknemer_id));
+  console.log("HairStudio werknemers:", werknemersHairStudio.map(w => w.werknemer_id));
+  console.log("Kapsalon werknemers:", werknemersKapsalon.map(w => w.werknemer_id));
 }
+
+
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ Seed error:", e);
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
-

@@ -22,17 +22,16 @@ model Bedrijf {
 }
 
 model Werknemer {
-  werknemer_id     Int               @id @default(autoincrement())
-  /// Verwijzing naar Clerk user (user_id)
-  clerkUserId      String            @unique
-  voornaam         String
-  naam             String
-  email            String
-  telefoonnummer   String
-  geboorte_datum   DateTime
-  bedrijf_id       Int
+  werknemer_id   Int      @id @default(autoincrement())
+  voornaam       String
+  naam           String
+  email          String   @unique
+  telefoonnummer String
+  geboorte_datum DateTime
+  bedrijf_id     Int
+  bedrijf        Bedrijf  @relation(fields: [bedrijf_id], references: [bedrijf_id])
+
   afspraken        Afspraak[]
-  bedrijf          Bedrijf           @relation(fields: [bedrijf_id], references: [bedrijf_id])
   beschikbaarheden Beschikbaarheid[]
 
   @@index([bedrijf_id])

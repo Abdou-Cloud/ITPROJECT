@@ -14,11 +14,15 @@ import { clerkClient } from "@clerk/nextjs/server";
  */
 export async function ensureBedrijfExists(userId: string) {
   try {
-    // Controleer of gebruiker al een Werknemer is
-    const existingWerknemer = await prisma.werknemer.findUnique({
-      where: { clerkUserId: userId },
+    // Controleer of gebruiker al een Werknemer is (via email, want Werknemer heeft geen clerkUserId)
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    const userEmail = user?.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
+    
+    const existingWerknemer = userEmail ? await prisma.werknemer.findFirst({
+      where: { email: userEmail },
       include: { bedrijf: true },
-    });
+    }) : null;
 
     if (existingWerknemer && existingWerknemer.bedrijf) {
       console.log(`[Bedrijf Sync] Bestaande Werknemer gevonden voor userId: ${userId}, bedrijf_id: ${existingWerknemer.bedrijf_id}`);
