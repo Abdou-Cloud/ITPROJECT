@@ -25,8 +25,16 @@ export async function GET(request: NextRequest) {
     // Haal volledige gebruikersdata op van Clerk voor logging
     const user = await currentUser();
     console.log(`[Sync Bedrijf API] Synchroniseer Bedrijf voor userId: ${userId}, email: ${user?.emailAddresses[0]?.emailAddress || "N/A"}`);
+    console.log(`[Sync Bedrijf API] User details:`, {
+      userId,
+      email: user?.emailAddresses[0]?.emailAddress,
+      firstName: user?.firstName,
+      lastName: user?.lastName,
+    });
 
+    console.log(`[Sync Bedrijf API] Roep ensureBedrijfExists aan...`);
     const bedrijf = await ensureBedrijfExists(userId);
+    console.log(`[Sync Bedrijf API] ensureBedrijfExists succesvol, bedrijf_id: ${bedrijf.bedrijf_id}`);
 
     return NextResponse.json({
       success: true,
@@ -39,10 +47,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Sync Bedrijf API] Fout bij synchroniseren bedrijf:", error);
+    console.error("[Sync Bedrijf API] Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    console.error("[Sync Bedrijf API] Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
     return NextResponse.json(
       {
         error: "Er is een fout opgetreden bij het synchroniseren van het bedrijf",
         details: error instanceof Error ? error.message : "Onbekende fout",
+        stack: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );
