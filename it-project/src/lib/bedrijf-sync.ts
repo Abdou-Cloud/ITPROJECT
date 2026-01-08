@@ -4,7 +4,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 /**
  * Zorgt ervoor dat een Bedrijf record bestaat voor de gegeven Clerk userId.
  * Als de gebruiker al een Werknemer of Admin is, retourneert hun bestaande Bedrijf.
- * Zo niet, maakt een nieuw Bedrijf en een Admin record aan voor de gebruiker.
+ * Zo niet, maakt alleen een nieuw Bedrijf aan (geen Admin record).
  * 
  * Deze functie is idempotent - kan veilig meerdere keren worden aangeroepen.
  * 
@@ -14,11 +14,17 @@ import { clerkClient } from "@clerk/nextjs/server";
  */
 export async function ensureBedrijfExists(userId: string) {
   try {
-    // Controleer of gebruiker al een Werknemer is (via email, want Werknemer heeft geen clerkUserId)
+    // Haal gebruiker op van Clerk (eenmalig aan het begin)
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
-    const userEmail = user?.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
+
+    if (!user) {
+      throw new Error(`Clerk gebruiker niet gevonden voor userId: ${userId}`);
+    }
+
+    const userEmail = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
     
+    // Controleer of gebruiker al een Werknemer is (via email, want Werknemer heeft geen clerkUserId)
     const existingWerknemer = userEmail ? await prisma.werknemer.findFirst({
       where: { email: userEmail },
       include: { bedrijf: true },
@@ -40,16 +46,8 @@ export async function ensureBedrijfExists(userId: string) {
       return existingAdmin.bedrijf;
     }
 
-    // Gebruiker is niet gekoppeld aan een Bedrijf, maak nieuw Bedrijf en Admin record aan
-    console.log(`[Bedrijf Sync] Geen Bedrijf gevonden voor userId: ${userId}, maak nieuw Bedrijf en Admin record aan...`);
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-
-    if (!user) {
-      throw new Error(`Clerk gebruiker niet gevonden voor userId: ${userId}`);
-    }
-
-    // Haal primair e-mailadres op
+    // Gebruiker is niet gekoppeld aan een Bedrijf via Werknemer of Admin
+    // Controleer eerst of er al een Bedrijf bestaat met hetzelfde email adres
     const primaryEmail = user.emailAddresses.find(
       (e) => e.id === user.primaryEmailAddressId
     )?.emailAddress || "";
@@ -57,6 +55,19 @@ export async function ensureBedrijfExists(userId: string) {
     if (!primaryEmail) {
       throw new Error(`Geen primair e-mailadres gevonden voor Clerk gebruiker: ${userId}`);
     }
+
+    // Controleer of er al een Bedrijf bestaat met dit email adres
+    const existingBedrijf = await prisma.bedrijf.findFirst({
+      where: { email: primaryEmail },
+    });
+
+    if (existingBedrijf) {
+      console.log(`[Bedrijf Sync] Bestaand Bedrijf gevonden met email ${primaryEmail}, bedrijf_id: ${existingBedrijf.bedrijf_id}`);
+      return existingBedrijf;
+    }
+
+    // Geen Bedrijf gevonden, maak nieuw Bedrijf aan
+    console.log(`[Bedrijf Sync] Geen Bedrijf gevonden voor userId: ${userId}, maak nieuw Bedrijf aan...`);
 
     // Haal voornaam en achternaam op van Clerk gebruiker met fallbacks
     const firstName = user.firstName || "Onbekend";
@@ -68,37 +79,32 @@ export async function ensureBedrijfExists(userId: string) {
     const companyEmail = primaryEmail;
     const companyPhone = "N/A";
 
-    // Maak Bedrijf en Admin aan in een transactie
-    const result = await prisma.$transaction(async (tx) => {
-      // Maak nieuw Bedrijf aan
-      const newBedrijf = await tx.bedrijf.create({
-        data: {
-          naam: companyName,
-          email: companyEmail,
-          telefoonnummer: companyPhone,
-        },
-      });
-
-      // Maak Admin record aan voor de gebruiker
-      const newAdmin = await tx.admin.create({
-        data: {
-          clerkUserId: userId,
-          voornaam: firstName,
-          naam: lastName,
-          email: primaryEmail,
-          bedrijf_id: newBedrijf.bedrijf_id,
-        },
-      });
-
-      return { bedrijf: newBedrijf, admin: newAdmin };
+    // Maak alleen Bedrijf aan (geen Admin)
+    console.log(`[Bedrijf Sync] Maak Bedrijf aan: naam="${companyName}", email="${companyEmail}"`);
+    
+    const newBedrijf = await prisma.bedrijf.create({
+      data: {
+        naam: companyName,
+        email: companyEmail,
+        telefoonnummer: companyPhone,
+      },
     });
 
-    console.log(`[Bedrijf Sync] ✓ Nieuw Bedrijf en Admin record aangemaakt voor userId: ${userId}, bedrijf_id: ${result.bedrijf.bedrijf_id}, email: ${primaryEmail}`);
+    console.log(`[Bedrijf Sync] ✓ Nieuw Bedrijf aangemaakt voor userId: ${userId}, bedrijf_id: ${newBedrijf.bedrijf_id}, email: ${primaryEmail}`);
 
-    return result.bedrijf;
+    return newBedrijf;
   } catch (error) {
-    console.error(`[Bedrijf Sync] ✗ Fout bij zorgen dat Bedrijf bestaat voor userId: ${userId}`, error);
+    console.error(`[Bedrijf Sync] ✗ Fout bij zorgen dat Bedrijf bestaat voor userId: ${userId}`);
+    console.error(`[Bedrijf Sync] Error type:`, error instanceof Error ? error.constructor.name : typeof error);
+    console.error(`[Bedrijf Sync] Error message:`, error instanceof Error ? error.message : String(error));
+    if (error instanceof Error && error.stack) {
+      console.error(`[Bedrijf Sync] Error stack:`, error.stack);
+    }
+    // Log Prisma errors specifiek
+    if (error && typeof error === 'object' && 'code' in error) {
+      console.error(`[Bedrijf Sync] Prisma error code:`, (error as any).code);
+      console.error(`[Bedrijf Sync] Prisma error meta:`, (error as any).meta);
+    }
     throw error;
   }
 }
-

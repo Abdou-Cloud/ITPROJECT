@@ -117,9 +117,17 @@ function AuthCallbackContent() {
         } else {
           // Ensure Bedrijf exists for business users
           try {
-            await fetch("/api/auth/sync-bedrijf");
+            const syncRes = await fetch("/api/auth/sync-bedrijf");
+            if (!syncRes.ok) {
+              const errorData = await syncRes.json().catch(() => ({}));
+              console.error("Fout bij synchroniseren bedrijf:", errorData);
+              throw new Error(errorData.error || "Fout bij synchroniseren bedrijf");
+            }
+            const syncData = await syncRes.json();
+            console.log("Bedrijf gesynchroniseerd:", syncData);
           } catch (error) {
             console.error("Fout bij synchroniseren bedrijf:", error);
+            // Blijf doorgaan, maar log de error
           }
           router.push("/business/dashboard");
         }
