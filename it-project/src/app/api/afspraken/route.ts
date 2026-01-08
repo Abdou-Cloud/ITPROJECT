@@ -275,27 +275,91 @@ export async function POST(request: NextRequest) {
 },
       });
 
+      // Verstuur bevestigingsmail naar klant
+      if (afspraak.klant?.email) {
+        try {
+          const startDate = new Date(afspraak.start_datum);
+          const endDate = new Date(afspraak.eind_datum);
+          const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60)); // Minuten
+
+          await resend.emails.send({
+            from: "SchedulAI <onboarding@resend.dev>",
+            to: afspraak.klant.email,
+            subject: "Afspraak Bevestigd 📅",
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #ff7a2d 0%, #ff5722 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                  <h1 style="color: white; margin: 0; font-size: 28px;">Afspraak Bevestigd!</h1>
+                </div>
+                <div style="background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  <p style="color: #333; font-size: 16px; line-height: 1.6;">Hallo ${afspraak.klant.voornaam || 'Klant'},</p>
+                  <p style="color: #666; font-size: 15px; line-height: 1.6;">Uw afspraak is succesvol bevestigd. Hier zijn de details:</p>
+                  <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding: 8px 0; color: #666; font-weight: bold; width: 150px;">Werknemer:</td>
+                        <td style="padding: 8px 0; color: #333;">${afspraak.werknemer.voornaam} ${afspraak.werknemer.naam}</td>
+                      </tr>
+                      ${afspraak.werknemer.bedrijf ? `
+                      <tr>
+                        <td style="padding: 8px 0; color: #666; font-weight: bold;">Bedrijf:</td>
+                        <td style="padding: 8px 0; color: #333;">${afspraak.werknemer.bedrijf.naam}</td>
+                      </tr>
+                      ` : ''}
+                      <tr>
+                        <td style="padding: 8px 0; color: #666; font-weight: bold;">Datum:</td>
+                        <td style="padding: 8px 0; color: #333;">${startDate.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #666; font-weight: bold;">Tijd:</td>
+                        <td style="padding: 8px 0; color: #333;">${startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #666; font-weight: bold;">Duur:</td>
+                        <td style="padding: 8px 0; color: #333;">${duration} minuten</td>
+                      </tr>
+                    </table>
+                  </div>
+                  <p style="color: #666; font-size: 14px; line-height: 1.6; margin-top: 20px;">
+                    Gelieve 15 minuten voor uw afspraak aanwezig te zijn. Als u wilt wijzigen of annuleren, neem dan minstens 24 uur van tevoren contact met ons op.
+                  </p>
+                  <p style="color: #666; font-size: 14px; line-height: 1.6; margin-top: 20px;">
+                    Met vriendelijke groet,<br>
+                    <strong>SchedulAI</strong>
+                  </p>
+                </div>
+              </div>
+            `,
+          });
+          console.log(`[Booking API] Bevestigingsmail verstuurd naar klant: ${afspraak.klant.email}`);
+        } catch (e) {
+          console.error("[Booking API] Fout bij versturen bevestigingsmail naar klant:", e);
+        }
+      }
+
+      // Verstuur notificatie naar bedrijf
       if (afspraak.werknemer?.bedrijf?.email) {
-  try {
-    await resend.emails.send({
-      from: "SchedulAI <onboarding@resend.dev>",
-      to: afspraak.werknemer.bedrijf.email,
-      subject: "Nieuwe afspraak bevestigd 📅",
-      html: `
-        <p>Hallo ${afspraak.werknemer.bedrijf.naam},</p>
-        <p>Er is een nieuwe afspraak bevestigd.</p>
-        <ul>
-          <li><strong>Klant:</strong> ${afspraak.klant.voornaam} ${afspraak.klant.naam}</li>
-          <li><strong>Werknemer:</strong> ${afspraak.werknemer.voornaam} ${afspraak.werknemer.naam}</li>
-          <li><strong>Wanneer:</strong> ${new Date(afspraak.start_datum).toLocaleString("nl-BE")}</li>
-        </ul>
-        <p>— SchedulAI</p>
-      `,
-    });
-  } catch (e) {
-    console.error("[Booking API] Failed to send company confirmation email", e);
-  }
-}
+        try {
+          await resend.emails.send({
+            from: "SchedulAI <onboarding@resend.dev>",
+            to: afspraak.werknemer.bedrijf.email,
+            subject: "Nieuwe afspraak bevestigd 📅",
+            html: `
+              <p>Hallo ${afspraak.werknemer.bedrijf.naam},</p>
+              <p>Er is een nieuwe afspraak bevestigd.</p>
+              <ul>
+                <li><strong>Klant:</strong> ${afspraak.klant.voornaam} ${afspraak.klant.naam}</li>
+                <li><strong>Werknemer:</strong> ${afspraak.werknemer.voornaam} ${afspraak.werknemer.naam}</li>
+                <li><strong>Wanneer:</strong> ${new Date(afspraak.start_datum).toLocaleString("nl-NL")}</li>
+              </ul>
+              <p>— SchedulAI</p>
+            `,
+          });
+          console.log(`[Booking API] Notificatie verstuurd naar bedrijf: ${afspraak.werknemer.bedrijf.email}`);
+        } catch (e) {
+          console.error("[Booking API] Fout bij versturen notificatie naar bedrijf:", e);
+        }
+      }
 
       return NextResponse.json(afspraak, { status: 201 });
     }
