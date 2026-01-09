@@ -1,4 +1,4 @@
-// app/api/bedrijven/route.ts
+// app/api/bedrijvenapi/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -8,7 +8,7 @@ export async function GET() {
       select: {
         bedrijf_id: true,
         naam: true,
-        
+
         email: true,
         telefoonnummer: true,
       },
