@@ -20,7 +20,7 @@ export default function DashboardPage() {
     const userType = user.publicMetadata?.userType as string | undefined;
 
     if (userType === "business") {
-      router.push("/business/dashboard");
+      router.push("/business/agenda");
     } else if (userType === "client") {
       router.push("/assistant");
     } else {

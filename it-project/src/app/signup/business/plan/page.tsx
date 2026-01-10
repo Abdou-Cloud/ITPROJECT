@@ -63,7 +63,7 @@ export default function BusinessPlanSelectionPage() {
   const handlePlanSelection = (planName: string) => {
     // Hier zou je de plan selectie kunnen opslaan in de database
     // Voor nu redirecten we naar het dashboard
-    router.push("/business/dashboard");
+    router.push("/business/agenda");
   };
 
   if (!isLoaded) {
@@ -159,4 +159,3 @@ export default function BusinessPlanSelectionPage() {
     </main>
   );
 }
-
