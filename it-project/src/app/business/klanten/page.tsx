@@ -20,7 +20,7 @@ import {
   MoreVertical,
   TrendingUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Client {
   id: string;
@@ -38,6 +38,24 @@ export default function BusinessClientsPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [klanten, setKlanten] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/business/klanten")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Fout bij ophalen klanten");
+        return res.json();
+      })
+      .then((data) => {
+        setKlanten(data.klanten || []);
+        setError(null);
+      })
+      .catch(() => setError("Kon klanten niet laden."))
+      .finally(() => setLoading(false));
+  }, []);
 
   if (!isLoaded) {
     return (
@@ -55,100 +73,10 @@ export default function BusinessClientsPage() {
     return null;
   }
 
-  const clients: Client[] = [
-    {
-      id: "1",
-      name: "Jan Jansen",
-      initials: "JJ",
-      email: "jan.jansen@email.nl",
-      phone: "+31 6 1234 5678",
-      appointments: 12,
-      lastContact: "Mi, 30 Dec",
-      rating: 5,
-      status: "active",
-    },
-    {
-      id: "2",
-      name: "Sophie Bakker",
-      initials: "SB",
-      email: "sophie.bakker@email.nl",
-      phone: "+31 6 2345 6789",
-      appointments: 9,
-      lastContact: "Di, 31 Dec",
-      rating: 5,
-      status: "active",
-    },
-    {
-      id: "3",
-      name: "Ahmed El Mansouri",
-      initials: "AEM",
-      email: "ahmed.mansouri@email.nl",
-      phone: "+31 6 3456 7890",
-      appointments: 15,
-      lastContact: "Di, 2 Jan",
-      rating: 5,
-      status: "active",
-    },
-    {
-      id: "4",
-      name: "Emma de Vries",
-      initials: "EDV",
-      email: "emma.devries@email.nl",
-      phone: "+31 6 4567 8901",
-      appointments: 8,
-      lastContact: "Vr, 3 Jan",
-      rating: 5,
-      status: "active",
-    },
-    {
-      id: "5",
-      name: "Lucas Vermeer",
-      initials: "LV",
-      email: "lucas.vermeer@email.nl",
-      phone: "+31 6 5678 9012",
-      appointments: 20,
-      lastContact: "Ma, 6 Jan",
-      rating: 5,
-      status: "active",
-    },
-    {
-      id: "6",
-      name: "Maria Santos",
-      initials: "MS",
-      email: "maria.santos@email.nl",
-      phone: "+31 6 6789 0123",
-      appointments: 4,
-      lastContact: "Vr, 8 Jan",
-      rating: 4,
-      status: "active",
-    },
-    {
-      id: "7",
-      name: "Thomas Berg",
-      initials: "TB",
-      email: "thomas.berg@email.nl",
-      phone: "+31 6 7890 1234",
-      appointments: 3,
-      lastContact: "Do, 9 Jan",
-      rating: 3,
-      status: "inactive",
-    },
-    {
-      id: "8",
-      name: "Lisa van Dam",
-      initials: "LVD",
-      email: "lisa.vandam@email.nl",
-      phone: "+31 6 8901 2345",
-      appointments: 18,
-      lastContact: "Za, 4 Jan",
-      rating: 5,
-      status: "active",
-    },
-  ];
-
-  const totalClients = clients.length;
-  const activeClients = clients.filter((c) => c.status === "active").length;
-  const avgAppointments = (clients.reduce((sum, c) => sum + c.appointments, 0) / clients.length).toFixed(1);
+  const totalClients = klanten.length;
+  // Voorbeeld: actieve klanten zijn klanten met >=1 afspraak
+  const activeClients = klanten.filter((c) => (c.afspraken?.length || 0) > 0).length;
+  const avgAppointments = klanten.length > 0 ? (klanten.reduce((sum, c) => sum + (c.afspraken?.length || 0), 0) / klanten.length).toFixed(1) : 0;
 
   const renderStars = (rating: number) => {
     return (
@@ -165,11 +93,12 @@ export default function BusinessClientsPage() {
     );
   };
 
-  const filteredClients = clients.filter((client) =>
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.phone.includes(searchQuery)
-  );
+
+    const filteredClients = klanten.filter((client) =>
+      (`${client.voornaam} ${client.naam}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (client.telefoonnummer || '').includes(searchQuery))
+    );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -184,10 +113,7 @@ export default function BusinessClientsPage() {
               <span className="font-bold text-xl bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">SchedulAI</span>
             </div>
             <div className="hidden lg:flex items-center gap-1">
-              <button onClick={() => router.push("/business/dashboard")} className="px-3 py-2 hover:bg-slate-700/50 rounded-lg transition flex items-center gap-2 text-slate-300 hover:text-white">
-                <BarChart3 className="w-4 h-4" />
-                Dashboard
-              </button>
+              {/* Dashboard knop verwijderd */}
               <button onClick={() => router.push("/business/agenda")} className="px-3 py-2 hover:bg-slate-700/50 rounded-lg transition flex items-center gap-2 text-slate-300 hover:text-white">
                 <Calendar className="w-4 h-4" />
                 Agenda
@@ -224,18 +150,8 @@ export default function BusinessClientsPage() {
             <p className="text-slate-400">Beheer je klanten database en bekijk hun geschiedenis</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700/50">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </Button>
-            <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700/50">
-              <Download className="w-4 h-4 mr-2" />
-              Exporteren
-            </Button>
-            <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium">
-              <Plus className="w-4 h-4 mr-2" />
-              Nieuw klant
-            </Button>
+            {/* Filter en Exporteren knoppen verwijderd */}
+            {/* Nieuwe klant button verwijderd */}
           </div>
         </div>
 
@@ -252,7 +168,7 @@ export default function BusinessClientsPage() {
                   <Users className="w-6 h-6 text-orange-400" />
                 </div>
               </div>
-              <p className="text-xs text-emerald-400 mt-2">✓ +10 deze maand</p>
+              {/* <p className="text-xs text-emerald-400 mt-2">✓ +10 deze maand</p> */}
             </CardContent>
           </Card>
 
@@ -267,7 +183,7 @@ export default function BusinessClientsPage() {
                   <TrendingUp className="w-6 h-6 text-emerald-400" />
                 </div>
               </div>
-              <p className="text-xs text-emerald-400 mt-2">✓ +88% activiteit</p>
+              {/* <p className="text-xs text-emerald-400 mt-2">✓ +88% activiteit</p> */}
             </CardContent>
           </Card>
 
@@ -310,21 +226,26 @@ export default function BusinessClientsPage() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
+
             <div className="divide-y divide-slate-700/50">
-              {filteredClients.length === 0 ? (
+              {loading ? (
+                <div className="p-8 text-center text-slate-400">Klanten laden...</div>
+              ) : error ? (
+                <div className="p-8 text-center text-red-400">{error}</div>
+              ) : filteredClients.length === 0 ? (
                 <div className="p-8 text-center text-slate-400">Geen klanten gevonden</div>
               ) : (
                 filteredClients.map((client) => (
                   <div
-                    key={client.id}
+                    key={client.klant_id}
                     className="p-4 hover:bg-slate-700/20 transition flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4 flex-1">
                       <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center font-bold text-sm">
-                        {client.initials}
+                        {client.voornaam?.[0]}{client.naam?.[0]}
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-white">{client.name}</h3>
+                        <h3 className="font-semibold text-white">{client.voornaam} {client.naam}</h3>
                         <div className="flex items-center gap-4 text-sm text-slate-400">
                           <div className="flex items-center gap-1">
                             <Mail className="w-3 h-3" />
@@ -332,7 +253,7 @@ export default function BusinessClientsPage() {
                           </div>
                           <div className="flex items-center gap-1">
                             <Phone className="w-3 h-3" />
-                            {client.phone}
+                            {client.telefoonnummer}
                           </div>
                         </div>
                       </div>
@@ -340,17 +261,14 @@ export default function BusinessClientsPage() {
 
                     <div className="flex items-center gap-6 min-w-fit">
                       <div className="text-right">
-                        <p className="font-semibold text-white">{client.appointments}</p>
+                        <p className="font-semibold text-white">{client.afspraken?.length || 0}</p>
                         <p className="text-xs text-slate-400">Afspraken</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-slate-400 mb-1">{client.lastContact}</p>
+                        <p className="text-sm text-slate-400 mb-1">-</p>
                         <p className="text-xs text-slate-500">Laatste contact</p>
                       </div>
-                      <div>{renderStars(client.rating)}</div>
-                      <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700/50">
-                        Details
-                      </Button>
+                      {/* <div>{renderStars(client.rating)}</div> */}
                       <button className="p-2 hover:bg-slate-700/50 rounded-lg transition text-slate-400 hover:text-white">
                         <MoreVertical className="w-5 h-5" />
                       </button>
@@ -361,17 +279,7 @@ export default function BusinessClientsPage() {
             </div>
 
             {/* Pagination */}
-            <div className="border-t border-slate-700/50 p-4 flex items-center justify-between">
-              <p className="text-sm text-slate-400">Toont 1-8 van 127 klanten</p>
-              <div className="flex gap-2">
-                <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700/50">
-                  Vorige
-                </Button>
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-                  Volgende
-                </Button>
-              </div>
-            </div>
+            {/* Geen paginatie, alle klanten worden getoond */}
           </CardContent>
         </Card>
       </main>

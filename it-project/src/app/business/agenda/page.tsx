@@ -32,7 +32,6 @@ import {
   ChevronRight,
   Plus,
   Download,
-  Filter,
   Search,
   Settings,
   Bell,
@@ -292,10 +291,7 @@ export default function BusinessAgendaPage() {
               <span className="font-bold text-xl bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">SchedulAI</span>
             </div>
             <div className="hidden lg:flex items-center gap-1">
-              <button onClick={() => router.push("/business/dashboard")} className="px-3 py-2 hover:bg-slate-700/50 rounded-lg transition flex items-center gap-2 text-slate-300 hover:text-white">
-                <BarChart3 className="w-4 h-4" />
-                Dashboard
-              </button>
+              {/* Dashboard knop verwijderd */}
               <button className="px-3 py-2 text-orange-500 font-medium flex items-center gap-2 bg-orange-500/10 rounded-lg">
                 <Calendar className="w-4 h-4" />
                 Agenda
@@ -332,14 +328,7 @@ export default function BusinessAgendaPage() {
             <p className="text-slate-400">Beheer al je afspraken op één plek</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700/50">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </Button>
-            <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700/50">
-              <Download className="w-4 h-4 mr-2" />
-              Exporteren
-            </Button>
+            {/* Filter en Exporteren knoppen verwijderd */}
             
             {/* Nieuwe Afspraak Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
