@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { vapi } from "@/lib/vapi";
 import { useUser } from "@clerk/nextjs";
 
-export function useVapiCall() {
+export function useVapiCall({
+  klantId,
+}: {
+  klantId: number | null;
+}) {
   const [callActive, setCallActive] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -15,10 +19,8 @@ export function useVapiCall() {
   const { isLoaded, isSignedIn } = useUser();
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
-  // Register event listeners unconditionally
   useEffect(() => {
     const handleCallStart = () => {
-      console.log("[Vapi] Call started");
       setConnecting(false);
       setCallActive(true);
       setCallEnded(false);
@@ -26,7 +28,6 @@ export function useVapiCall() {
     };
 
     const handleCallEnd = () => {
-      console.log("[Vapi] Call ended");
       setCallActive(false);
       setConnecting(false);
       setIsSpeaking(false);
@@ -46,10 +47,9 @@ export function useVapiCall() {
     };
 
     const handleError = (err: any) => {
-      console.error("[Vapi] Error:", err);
       setConnecting(false);
       setCallActive(false);
-      setError(err?.message || "Er is een fout opgetreden met de AI assistent");
+      setError(err?.message || "Vapi fout");
     };
 
     vapi
@@ -72,7 +72,6 @@ export function useVapiCall() {
   }, []);
 
   const toggleCall = async () => {
-    // Reset error
     setError(null);
 
     if (callActive) {
@@ -80,50 +79,37 @@ export function useVapiCall() {
       return;
     }
 
-    // Check if user is signed in
-    if (!isLoaded) {
-      setError("Gebruiker wordt nog geladen...");
+    if (!isLoaded || !isSignedIn) {
+      setError("Je moet ingelogd zijn");
       return;
     }
 
-    if (!isSignedIn) {
-      setError("Je moet ingelogd zijn om een gesprek te starten");
+    if (!klantId) {
+      setError("Geen klant_id beschikbaar");
       return;
     }
 
-    // Check if environment variables are set
     const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
-    const apiKey = process.env.NEXT_PUBLIC_VAPI_API_KEY;
-
-    console.log("[Vapi] Starting call with assistant:", assistantId);
-    console.log("[Vapi] API Key present:", !!apiKey);
-
     if (!assistantId) {
-      setError("NEXT_PUBLIC_VAPI_ASSISTANT_ID is niet geconfigureerd in .env");
+      setError("Assistant ID ontbreekt");
       return;
     }
 
-    if (!apiKey) {
-      setError("NEXT_PUBLIC_VAPI_API_KEY is niet geconfigureerd in .env");
-      return;
-    }
+    setConnecting(true);
+    setMessages([]);
+    setCallEnded(false);
 
-    try {
-      setConnecting(true);
-      setMessages([]);
-      setCallEnded(false);
-      await vapi.start(assistantId);
-    } catch (err: any) {
-      console.error("[Vapi] Start error:", err);
-      setConnecting(false);
-      setError(err?.message || "Kon geen verbinding maken met de AI assistent");
-    }
+    await vapi.start(assistantId, {
+      metadata: {
+        klant_id: klantId,
+      },
+    });
   };
 
-  // Auto-scroll messages
   useEffect(() => {
     if (messageContainerRef.current) {
-      messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+      messageContainerRef.current.scrollTop =
+        messageContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
