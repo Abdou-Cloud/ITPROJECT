@@ -2,9 +2,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import { vapi } from "@/lib/vapi";
-import { useUser } from "@clerk/nextjs";
+import { useUserToken } from "@/hooks/useUserToken";
 
-export function useVapiCall() {
+interface Customer {
+  klant_id: number;
+  voornaam: string;
+  naam: string;
+  email: string;
+  telefoonnummer?: string;
+  bedrijf_id?: number;
+  // Admin fields
+  admin_id?: number;
+  // Generic
+  role?: string;
+  [key: string]: any;
+}
+
+interface UseVapiCallProps {
+  customer: Customer | null;
+}
+
+export function useVapiCall({ customer }: UseVapiCallProps) {
   const [callActive, setCallActive] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -12,13 +30,12 @@ export function useVapiCall() {
   const [callEnded, setCallEnded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { isLoaded, isSignedIn } = useUser();
+  const { user, isSignedIn, getUserToken } = useUserToken();
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
-  // Register event listeners unconditionally
+  // ===================== Event handlers =====================
   useEffect(() => {
     const handleCallStart = () => {
-      console.log("[Vapi] Call started");
       setConnecting(false);
       setCallActive(true);
       setCallEnded(false);
@@ -26,7 +43,6 @@ export function useVapiCall() {
     };
 
     const handleCallEnd = () => {
-      console.log("[Vapi] Call ended");
       setCallActive(false);
       setConnecting(false);
       setIsSpeaking(false);
@@ -46,10 +62,9 @@ export function useVapiCall() {
     };
 
     const handleError = (err: any) => {
-      console.error("[Vapi] Error:", err);
       setConnecting(false);
       setCallActive(false);
-      setError(err?.message || "Er is een fout opgetreden met de AI assistent");
+      setError(err?.message || "Vapi fout");
     };
 
     vapi
@@ -71,8 +86,16 @@ export function useVapiCall() {
     };
   }, []);
 
+  // ===================== Scroll messages automatisch =====================
+  useEffect(() => {
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop =
+        messageContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // ===================== Start/stop call =====================
   const toggleCall = async () => {
-    // Reset error
     setError(null);
 
     if (callActive) {
@@ -80,52 +103,47 @@ export function useVapiCall() {
       return;
     }
 
-    // Check if user is signed in
-    if (!isLoaded) {
-      setError("Gebruiker wordt nog geladen...");
+    if (!isSignedIn || !user) {
+      setError("Je moet ingelogd zijn");
       return;
     }
 
-    if (!isSignedIn) {
-      setError("Je moet ingelogd zijn om een gesprek te starten");
+    if (!customer) {
+      setError("Geen klantgegevens beschikbaar");
       return;
     }
 
-    // Check if environment variables are set
     const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
-    const apiKey = process.env.NEXT_PUBLIC_VAPI_API_KEY;
-
-    console.log("[Vapi] Starting call with assistant:", assistantId);
-    console.log("[Vapi] API Key present:", !!apiKey);
-
     if (!assistantId) {
-      setError("NEXT_PUBLIC_VAPI_ASSISTANT_ID is niet geconfigureerd in .env");
+      setError("Assistant ID ontbreekt");
       return;
     }
 
-    if (!apiKey) {
-      setError("NEXT_PUBLIC_VAPI_API_KEY is niet geconfigureerd in .env");
-      return;
-    }
+    setConnecting(true);
+    setMessages([]);
+    setCallEnded(false);
 
     try {
-      setConnecting(true);
-      setMessages([]);
-      setCallEnded(false);
-      await vapi.start(assistantId);
+      // Haal JWT token van Clerk
+      const token = await getUserToken();
+
+      // Start de VAPI call met JWT in metadata
+      await vapi.start(assistantId, {
+        metadata: {
+          klant_id: customer.klant_id || customer.admin_id, // Fallback for admin
+          voornaam: customer.voornaam,
+          naam: customer.naam,
+          email: customer.email,
+          telefoonnummer: customer.telefoonnummer,
+          ...(token ? { jwt: token } : {}),
+        },
+      });
     } catch (err: any) {
-      console.error("[Vapi] Start error:", err);
       setConnecting(false);
-      setError(err?.message || "Kon geen verbinding maken met de AI assistent");
+      setCallActive(false);
+      setError(err?.message || "Kon call niet starten");
     }
   };
-
-  // Auto-scroll messages
-  useEffect(() => {
-    if (messageContainerRef.current) {
-      messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
-    }
-  }, [messages]);
 
   return {
     callActive,
