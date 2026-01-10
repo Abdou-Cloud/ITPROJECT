@@ -2,13 +2,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import { vapi } from "@/lib/vapi";
-import { useUser } from "@clerk/nextjs";
+import { useUserToken } from "@/hooks/useUserToken";
 
-export function useVapiCall({
-  klantId,
-}: {
-  klantId: number | null;
-}) {
+interface Customer {
+  klant_id: number;
+  voornaam: string;
+  naam: string;
+  email: string;
+  telefoonnummer?: string;
+  bedrijf_id?: number;
+  // Admin fields
+  admin_id?: number;
+  // Generic
+  role?: string;
+  [key: string]: any;
+}
+
+interface UseVapiCallProps {
+  customer: Customer | null;
+}
+
+export function useVapiCall({ customer }: UseVapiCallProps) {
   const [callActive, setCallActive] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -16,9 +30,10 @@ export function useVapiCall({
   const [callEnded, setCallEnded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { isLoaded, isSignedIn } = useUser();
+  const { user, isSignedIn, getUserToken } = useUserToken();
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
+  // ===================== Event handlers =====================
   useEffect(() => {
     const handleCallStart = () => {
       setConnecting(false);
@@ -71,6 +86,15 @@ export function useVapiCall({
     };
   }, []);
 
+  // ===================== Scroll messages automatisch =====================
+  useEffect(() => {
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop =
+        messageContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // ===================== Start/stop call =====================
   const toggleCall = async () => {
     setError(null);
 
@@ -79,13 +103,13 @@ export function useVapiCall({
       return;
     }
 
-    if (!isLoaded || !isSignedIn) {
+    if (!isSignedIn || !user) {
       setError("Je moet ingelogd zijn");
       return;
     }
 
-    if (!klantId) {
-      setError("Geen klant_id beschikbaar");
+    if (!customer) {
+      setError("Geen klantgegevens beschikbaar");
       return;
     }
 
@@ -99,19 +123,27 @@ export function useVapiCall({
     setMessages([]);
     setCallEnded(false);
 
-    await vapi.start(assistantId, {
-      metadata: {
-        klant_id: klantId,
-      },
-    });
-  };
+    try {
+      // Haal JWT token van Clerk
+      const token = await getUserToken();
 
-  useEffect(() => {
-    if (messageContainerRef.current) {
-      messageContainerRef.current.scrollTop =
-        messageContainerRef.current.scrollHeight;
+      // Start de VAPI call met JWT in metadata
+      await vapi.start(assistantId, {
+        metadata: {
+          klant_id: customer.klant_id || customer.admin_id, // Fallback for admin
+          voornaam: customer.voornaam,
+          naam: customer.naam,
+          email: customer.email,
+          telefoonnummer: customer.telefoonnummer,
+          ...(token ? { jwt: token } : {}),
+        },
+      });
+    } catch (err: any) {
+      setConnecting(false);
+      setCallActive(false);
+      setError(err?.message || "Kon call niet starten");
     }
-  }, [messages]);
+  };
 
   return {
     callActive,

@@ -7,29 +7,59 @@ type BookEventAIRequest = {
   werknemer_id?: number;
   start_datum?: string;
   eind_datum?: string;
+  // Optionele klant- en auth parameter voor Vapi calls (via metadata)
+  klant_email?: string;
+  klant_naam?: string;
+  klant_voornaam?: string;
+  klant_telefoon?: string;
+  jwt?: string;
 };
 
-// Functie om ingelogde gebruiker op te halen (pas aan naar jouw auth systeem)
-function getUserEmailFromRequest(request: NextRequest): string | null {
-  // Bijvoorbeeld JWT in header: Authorization: Bearer <token>
-  const authHeader = request.headers.get("Authorization");
-  if (!authHeader) return null;
-  const token = authHeader.replace("Bearer ", "");
-  // decodeer JWT en haal email eruit (afhankelijk van jouw auth setup)
-  // Hier dummy: return email uit token
-  try {
-    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
-    return payload.email;
-  } catch {
-    return null;
+// Eenvoudige helper om email te extracten (Demo versie: we vertrouwen alles!)
+function getUserEmail(request: NextRequest, body: BookEventAIRequest): string | null {
+  // 1. Probeer JWT uit request body (Vapi stuurt dit mee als we dat instellen)
+  if (body.jwt) {
+    try {
+      const payload = JSON.parse(Buffer.from(body.jwt.split(".")[1], "base64").toString());
+      if (payload.email) return payload.email;
+    } catch (e) {
+      console.warn("Kon JWT uit body niet parsen:", e);
+    }
   }
+
+  // 2. Probeer klant_email uit request body (Directe Vapi metadata)
+  if (body.klant_email) {
+    return body.klant_email;
+  }
+
+  // 3. Fallback: Authorization header (voor testen met Postman etc)
+  const authHeader = request.headers.get("Authorization");
+  if (authHeader) {
+    try {
+      const token = authHeader.replace("Bearer ", "");
+      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
+      if (payload.email) return payload.email;
+    } catch (e) {
+      console.warn("Kon header JWT niet parsen:", e);
+    }
+  }
+
+  return null;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as BookEventAIRequest;
-    const { werknemer_id, start_datum, eind_datum } = body;
+    const {
+      werknemer_id,
+      start_datum,
+      eind_datum,
+      klant_voornaam,
+      klant_naam,
+      klant_telefoon
+    } = body;
 
+    // 1. Validatie van verplichte velden
     if (!werknemer_id || !start_datum || !eind_datum) {
       return NextResponse.json(
         { error: "werknemer_id, start_datum en eind_datum zijn verplicht" },
@@ -37,13 +67,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Haal ingelogde gebruiker
-    const userEmail = getUserEmailFromRequest(request);
+    // 2. Identificatie (Demo mode: "Trust me bro" security)
+    const userEmail = getUserEmail(request, body);
+
     if (!userEmail) {
-      return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+      return NextResponse.json({ error: "Gebruiker niet geïdentificeerd (geen JWT of email)" }, { status: 401 });
     }
 
-    // Parse dates
+    // 3. Parse dates
     const startDateTime = new Date(start_datum);
     const endDateTime = new Date(eind_datum);
     if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
@@ -53,26 +84,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Einddatum moet na startdatum zijn" }, { status: 400 });
     }
 
-    // Check werknemer
+    // 4. Check werknemer
     const werknemer = await prisma.werknemer.findUnique({
       where: { werknemer_id },
       select: { werknemer_id: true, voornaam: true, naam: true, email: true, telefoonnummer: true, bedrijf_id: true, bedrijf: { select: { naam: true, email: true } } },
     });
     if (!werknemer) return NextResponse.json({ error: "Werknemer niet gevonden" }, { status: 404 });
 
-    // Vind of maak klant op basis van ingelogde gebruiker
+    // 5. Vind of maak klant
     let dbKlant = await prisma.klant.findFirst({
       where: { email: userEmail },
       select: { klant_id: true, voornaam: true, naam: true, email: true, telefoonnummer: true },
     });
+
     if (!dbKlant) {
+      // Nieuwe klant aanmaken
       const createdKlant = await prisma.klant.create({
         data: {
           email: userEmail,
-          voornaam: "Onbekend",
-          naam: "Onbekend",
-          telefoonnummer: "N/A",
-          clerkUserId: `guest-${crypto.randomUUID()}`,
+          voornaam: klant_voornaam || "Gast",
+          naam: klant_naam || "Gebruiker",
+          telefoonnummer: klant_telefoon || "N/A",
+          clerkUserId: `demo-${crypto.randomUUID()}`,
           geboorte_datum: new Date(),
           bedrijf_id: werknemer.bedrijf_id ?? undefined,
         },
@@ -84,20 +117,22 @@ export async function POST(request: NextRequest) {
         email: createdKlant.email,
         telefoonnummer: createdKlant.telefoonnummer,
       };
-      console.log(`[Book-Event-AI] Created new klant via AI booking: ${dbKlant.email}`);
+      console.log(`[Book-Event-AI] DEMO: Created new klant: ${dbKlant.email}`);
     } else {
-      console.log(`[Book-Event-AI] Reusing existing klant: ${dbKlant.email}`);
+      console.log(`[Book-Event-AI] DEMO: Found existing klant: ${dbKlant.email}`);
     }
 
-    // Beschikbaarheid check
+    // 6. Beschikbaarheid check
     const dayNames = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
     const dayOfWeek = dayNames[startDateTime.getDay()];
     const beschikbaarheden = await prisma.beschikbaarheid.findMany({
       where: { werknemer_id, dag: dayOfWeek },
       select: { start_tijd: true, eind_tijd: true },
     });
+
+    // In DEMO mode kunnen we hier wat soepeler zijn, maar laten we logica behouden
     if (beschikbaarheden.length === 0) {
-      return NextResponse.json({ error: "Werknemer is niet beschikbaar op deze dag" }, { status: 400 });
+      return NextResponse.json({ error: "Werknemer werkt niet op deze dag" }, { status: 400 });
     }
 
     const bookingStartMinutes = startDateTime.getHours() * 60 + startDateTime.getMinutes();
@@ -110,10 +145,10 @@ export async function POST(request: NextRequest) {
       return bookingStartMinutes >= startMinutes && bookingEndMinutes <= endMinutes;
     });
     if (!isWithinBeschikbaarheid) {
-      return NextResponse.json({ error: "Dit tijdslot valt buiten de beschikbaarheid van de werknemer" }, { status: 400 });
+      return NextResponse.json({ error: "Tijdslot valt buiten werktijden" }, { status: 400 });
     }
 
-    // Overlap check
+    // 7. Overlap check
     const overlappingAppointment = await prisma.afspraak.findFirst({
       where: {
         werknemer_id,
@@ -122,9 +157,9 @@ export async function POST(request: NextRequest) {
         status: { not: "geannuleerd" },
       },
     });
-    if (overlappingAppointment) return NextResponse.json({ error: "Dit tijdslot is al bezet" }, { status: 409 });
+    if (overlappingAppointment) return NextResponse.json({ error: "Tijdslot is al bezet" }, { status: 409 });
 
-    // Maak afspraak
+    // 8. Maak afspraak
     const afspraak = await prisma.afspraak.create({
       data: { werknemer_id, klant_id: dbKlant.klant_id, start_datum: startDateTime, eind_datum: endDateTime, status: "gepland" },
       include: {
@@ -133,24 +168,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Verstuur bevestigingsmail
+    // 9. Bevestigingsmail (behouden)
     if (afspraak.klant?.email) {
       try {
-        const startDate = new Date(afspraak.start_datum);
-        const endDate = new Date(afspraak.eind_datum);
-        const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
         await resend.emails.send({
           from: "SchedulAI <onboarding@resend.dev>",
           to: afspraak.klant.email,
-          subject: "Afspraak Bevestigd 📅",
+          subject: "Afspraak Bevestigd (Demo) 📅",
           html: `<p>Hallo ${afspraak.klant.voornaam || 'Klant'}, uw afspraak is bevestigd!</p>`,
         });
-      } catch (e) { console.error("[Book-Event-AI] Fout bij mail:", e); }
+      } catch (e) { console.error("[Book-Event-AI] Mail error:", e); }
     }
 
     return NextResponse.json(afspraak, { status: 201 });
   } catch (error) {
     console.error("[Book-Event-AI] Error:", error);
-    return NextResponse.json({ error: "Er is een fout opgetreden bij het boeken" }, { status: 500 });
+    return NextResponse.json({ error: "Server fout bij boeken" }, { status: 500 });
   }
 }

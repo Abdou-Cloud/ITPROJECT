@@ -123,6 +123,7 @@ function toHHMM(d: Date) {
 export default function AIVoiceAssistantPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const { user, isSignedIn, getUserToken } = useUserToken();
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -149,7 +150,7 @@ export default function AIVoiceAssistantPage() {
     toggleCall,
     messageContainerRef,
   } = useVapiCall({
-    klantId: currentUser?.klant_id ?? null,
+    customer: currentUser,
   });
 
   const checklist = useMemo<ChecklistItem[]>(
