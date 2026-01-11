@@ -1,29 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-type RoosterItem = {
-  dag: string;
-  open: boolean;
-  openTijd: string;
-  sluitTijd: string;
-  pauze: boolean;
-  pauzeStart: string;
-  pauzeEind: string;
-};
-
-type Werknemer = {
-  werknemer_id: number;
-  voornaam: string;
-  naam: string;
-  email: string;
-  beschikbaarheden?: Array<{
-    dag: string;
-    start_tijd: string;
-    eind_tijd: string;
-  }>;
-  rooster: RoosterItem[];
-};
 import { useRouter } from "next/navigation";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,17 +12,25 @@ import {
   Clock,
   Bell,
   Search,
+  Edit2,
+  Check,
+  X,
+  Loader2,
 } from "lucide-react";
 
-const weekDays = [
-  "Maandag",
-  "Dinsdag",
-  "Woensdag",
-  "Donderdag",
-  "Vrijdag",
-  "Zaterdag",
-  "Zondag",
-];
+type Werknemer = {
+  werknemer_id: number;
+  voornaam: string;
+  naam: string;
+  email: string;
+};
+
+type EditingWerknemer = {
+  werknemer_id: number;
+  voornaam: string;
+  naam: string;
+  email: string;
+};
 
 export default function WerknemersPage() {
   const { user, isLoaded } = useUser();
@@ -53,101 +38,124 @@ export default function WerknemersPage() {
   const [werknemers, setWerknemers] = useState<Werknemer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [nieuwWerknemer, setNieuwWerknemer] = useState<{ voornaam: string; naam: string; email: string }>({ voornaam: "", naam: "", email: "" });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingData, setEditingData] = useState<EditingWerknemer | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   // Werknemers ophalen
   useEffect(() => {
-    setLoading(true);
-    fetch("/api/business/werknemers")
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Fout bij ophalen werknemers");
-        return res.json();
-      })
-      .then((data) => {
-        setWerknemers(
-          (data.werknemers || []).map((w: any): Werknemer => ({
-            werknemer_id: w.werknemer_id,
-            voornaam: w.voornaam,
-            naam: w.naam,
-            email: w.email,
-            beschikbaarheden: w.beschikbaarheden,
-            rooster: weekDays.map((dag) => {
-              const b = (w.beschikbaarheden || []).find((x: any) => x.dag === dag);
-              return {
-                dag,
-                open: !!b,
-                openTijd: b ? b.start_tijd.slice(11, 16) : "09:00",
-                sluitTijd: b ? b.eind_tijd.slice(11, 16) : "17:00",
-                pauze: false,
-                pauzeStart: "12:00",
-                pauzeEind: "13:00",
-              };
-            }),
-          }))
-        );
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    if (isLoaded && user) {
+      fetchWerknemers();
+    }
+  }, [isLoaded, user]);
 
-  // Rooster wijzigen en opslaan
-  const handleRoosterChange = async (
-    wid: number,
-    idx: number,
-    field: keyof RoosterItem,
-    value: any
-  ) => {
-    setWerknemers((prev) =>
-      prev.map((w) =>
-        w.werknemer_id === wid
-          ? {
-              ...w,
-              rooster: w.rooster.map((item, i) =>
-                i === idx ? { ...item, [field]: value } : item
-              ),
-            }
-          : w
-      )
-    );
-    // Direct opslaan naar backend
-    const werknemer = werknemers.find((w) => w.werknemer_id === wid);
-    if (!werknemer) return;
-    const rooster = werknemer.rooster.map((item, i) => (i === idx ? { ...item, [field]: value } : item));
-    await fetch("/api/business/werknemers/beschikbaarheid", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ werknemer_id: wid, rooster }),
-    });
+  const fetchWerknemers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/business/werknemers");
+      if (!response.ok) {
+        throw new Error("Fout bij ophalen werknemers");
+      }
+      const data = await response.json();
+      setWerknemers(data.werknemers || []);
+    } catch (error) {
+      console.error("Fout bij ophalen werknemers:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddWerknemer = async () => {
     if (!nieuwWerknemer.voornaam || !nieuwWerknemer.naam || !nieuwWerknemer.email) return;
-    const res = await fetch("/api/business/werknemers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(nieuwWerknemer),
+    try {
+      const res = await fetch("/api/business/werknemers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nieuwWerknemer),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWerknemers((prev) => [
+          ...prev,
+          {
+            werknemer_id: data.werknemer.werknemer_id,
+            voornaam: data.werknemer.voornaam,
+            naam: data.werknemer.naam,
+            email: data.werknemer.email,
+          },
+        ]);
+        setNieuwWerknemer({ voornaam: "", naam: "", email: "" });
+      } else {
+        const errorData = await res.json();
+        console.error("Fout bij toevoegen werknemer:", errorData.error);
+        alert(errorData.error || "Fout bij toevoegen werknemer");
+      }
+    } catch (error) {
+      console.error("Fout bij toevoegen werknemer:", error);
+      alert("Er is een fout opgetreden bij het toevoegen van de werknemer");
+    }
+  };
+
+  const handleEdit = (werknemer: Werknemer) => {
+    setEditingId(werknemer.werknemer_id);
+    setEditingData({
+      werknemer_id: werknemer.werknemer_id,
+      voornaam: werknemer.voornaam,
+      naam: werknemer.naam,
+      email: werknemer.email,
     });
-    if (res.ok) {
-      const data = await res.json();
-      setWerknemers((prev) => [
-        ...prev,
-        {
-          werknemer_id: data.werknemer.werknemer_id,
-          voornaam: data.werknemer.voornaam,
-          naam: data.werknemer.naam,
-          email: data.werknemer.email,
-          beschikbaarheden: data.werknemer.beschikbaarheden,
-          rooster: weekDays.map((dag) => ({
-            dag,
-            open: dag !== "Zondag",
-            openTijd: "09:00",
-            sluitTijd: "17:00",
-            pauze: false,
-            pauzeStart: "12:00",
-            pauzeEind: "13:00",
-          })),
-        },
-      ]);
-      setNieuwWerknemer({ voornaam: "", naam: "", email: "" });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditingData(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingData || !editingId) return;
+    if (!editingData.voornaam || !editingData.naam || !editingData.email) {
+      alert("Alle velden zijn verplicht");
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      const res = await fetch(`/api/business/werknemers/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          voornaam: editingData.voornaam,
+          naam: editingData.naam,
+          email: editingData.email,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setWerknemers((prev) =>
+          prev.map((w) =>
+            w.werknemer_id === editingId
+              ? {
+                  werknemer_id: data.werknemer.werknemer_id,
+                  voornaam: data.werknemer.voornaam,
+                  naam: data.werknemer.naam,
+                  email: data.werknemer.email,
+                }
+              : w
+          )
+        );
+        setEditingId(null);
+        setEditingData(null);
+      } else {
+        const errorData = await res.json();
+        console.error("Fout bij updaten werknemer:", errorData.error);
+        alert(errorData.error || "Fout bij updaten werknemer");
+      }
+    } catch (error) {
+      console.error("Fout bij updaten werknemer:", error);
+      alert("Er is een fout opgetreden bij het updaten van de werknemer");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -234,68 +242,85 @@ export default function WerknemersPage() {
             <Button onClick={handleAddWerknemer} className="bg-gradient-to-r from-orange-500 to-orange-600">Toevoegen</Button>
           </div>
         </div>
-        <div className="grid gap-8 max-w-2xl">
+        {werknemers.length === 0 && !loading && (
+          <div className="bg-slate-800/80 border border-slate-700/50 rounded-lg p-8 text-center">
+            <p className="text-gray-400">Nog geen werknemers. Voeg je eerste werknemer toe.</p>
+          </div>
+        )}
+
+        <div className="grid gap-4 max-w-2xl">
           {werknemers.map((w) => (
             <Card key={w.werknemer_id} className="bg-slate-800/80 border border-slate-700/50">
               <CardContent className="p-4">
-                <div className="font-semibold text-lg mb-2">{w.voornaam} {w.naam} <span className="text-slate-400 text-sm">({w.email})</span></div>
-                <div className="grid gap-4">
-                  {w.rooster.map((item, idx) => (
-                    <div key={item.dag} className="flex flex-col md:flex-row md:items-center gap-4">
-                      <div className="font-semibold w-32">{item.dag}</div>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={item.open}
-                          onChange={(e) => handleRoosterChange(w.werknemer_id, idx, "open", e.target.checked)}
-                        />
-                        Open
-                      </label>
-                      {item.open && (
-                        <>
-                          <input
-                            type="time"
-                            value={item.openTijd}
-                            onChange={(e) => handleRoosterChange(w.werknemer_id, idx, "openTijd", e.target.value)}
-                            className="bg-slate-700 rounded px-2 py-1 text-white"
-                          />
-                          <span>-</span>
-                          <input
-                            type="time"
-                            value={item.sluitTijd}
-                            onChange={(e) => handleRoosterChange(w.werknemer_id, idx, "sluitTijd", e.target.value)}
-                            className="bg-slate-700 rounded px-2 py-1 text-white"
-                          />
-                          <label className="flex items-center gap-2 ml-4">
-                            <input
-                              type="checkbox"
-                              checked={item.pauze}
-                              onChange={(e) => handleRoosterChange(w.werknemer_id, idx, "pauze", e.target.checked)}
-                            />
-                            Pauze
-                          </label>
-                          {item.pauze && (
-                            <>
-                              <input
-                                type="time"
-                                value={item.pauzeStart}
-                                onChange={(e) => handleRoosterChange(w.werknemer_id, idx, "pauzeStart", e.target.value)}
-                                className="bg-slate-700 rounded px-2 py-1 text-white"
-                              />
-                              <span>-</span>
-                              <input
-                                type="time"
-                                value={item.pauzeEind}
-                                onChange={(e) => handleRoosterChange(w.werknemer_id, idx, "pauzeEind", e.target.value)}
-                                className="bg-slate-700 rounded px-2 py-1 text-white"
-                              />
-                            </>
-                          )}
-                        </>
-                      )}
+                {editingId === w.werknemer_id && editingData ? (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editingData.voornaam}
+                        onChange={(e) => setEditingData({ ...editingData, voornaam: e.target.value })}
+                        className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="Voornaam"
+                      />
+                      <input
+                        type="text"
+                        value={editingData.naam}
+                        onChange={(e) => setEditingData({ ...editingData, naam: e.target.value })}
+                        className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="Achternaam"
+                      />
                     </div>
-                  ))}
-                </div>
+                    <input
+                      type="email"
+                      value={editingData.email}
+                      onChange={(e) => setEditingData({ ...editingData, email: e.target.value })}
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="Email"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleSaveEdit}
+                        disabled={updating}
+                        className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:opacity-50"
+                      >
+                        {updating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Opslaan...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4 mr-2" />
+                            Opslaan
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={handleCancelEdit}
+                        disabled={updating}
+                        variant="outline"
+                        className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Annuleren
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-lg">{w.voornaam} {w.naam}</div>
+                      <div className="text-slate-400 text-sm">{w.email}</div>
+                    </div>
+                    <Button
+                      onClick={() => handleEdit(w)}
+                      variant="ghost"
+                      className="text-slate-400 hover:text-orange-500 hover:bg-orange-500/10"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
