@@ -9,7 +9,6 @@ import {
   Calendar,
   Phone,
   Users,
-  Settings,
   Bell,
   Search,
   Plus,
@@ -72,10 +71,6 @@ export default function BusinessDashboard() {
               <button onClick={() => router.push("/business/klanten")} className="px-3 py-2 hover:bg-slate-700/50 rounded-lg transition flex items-center gap-2 text-slate-300 hover:text-white">
                 <Users className="w-4 h-4" />
                 Klanten
-              </button>
-              <button onClick={() => router.push("/business/instellingen")} className="px-3 py-2 hover:bg-slate-700/50 rounded-lg transition flex items-center gap-2 text-slate-300 hover:text-white">
-                <Settings className="w-4 h-4" />
-                Instellingen
               </button>
             </div>
           </div>
