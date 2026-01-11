@@ -257,15 +257,15 @@ export default function BusinessAgendaPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "bevestigd":
-        return "bg-emerald-500/20 text-white border-emerald-500/30";
+        return "bg-emerald-500/20 border-emerald-500/30";
       case "gepland":
-        return "bg-orange-500/20 text-white border-orange-500/30";
+        return "bg-orange-500/20 border-orange-500/30";
       case "voltooid":
-        return "bg-blue-500/20 text-white border-blue-500/30";
+        return "bg-blue-500/20 border-blue-500/30";
       case "geannuleerd":
-        return "bg-red-500/20 text-white border-red-500/30";
+        return "bg-red-500/20 border-red-500/30";
       default:
-        return "bg-slate-500/20 text-white border-slate-500/30";
+        return "bg-slate-500/20 border-slate-500/30";
     }
   };
 
@@ -585,7 +585,7 @@ export default function BusinessAgendaPage() {
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="font-semibold text-white">{apt.klant.naam}</h3>
                               <span
-                                className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(apt.status)}`}
+                                className={`text-xs px-2 py-1 rounded-full border text-white ${getStatusColor(apt.status)}`}
                               >
                                 {getStatusLabel(apt.status)}
                               </span>
