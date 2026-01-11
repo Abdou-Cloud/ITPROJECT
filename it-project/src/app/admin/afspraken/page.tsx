@@ -4,6 +4,7 @@ import React from 'react';
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Calendar, Clock, User, Building2, ArrowUpRight } from 'lucide-react';
+import SearchInput from "@/components/admin/SearchInput"; // Importeer dezelfde zoekbalk
 
 // Hulpfuncties voor styling
 const getStatusClasses = (status: string) => {
@@ -19,9 +20,27 @@ const getStatusClasses = (status: string) => {
   }
 };
 
-export default async function AfsprakenPage() {
-  // Haal alle afspraken op inclusief de gekoppelde klant en werknemer (professional)
+export default async function AfsprakenPage({
+  searchParams,
+}: {
+  searchParams?: { query?: string };
+}) {
+  const query = searchParams?.query || "";
+
+  // Haal gefilterde afspraken op inclusief de gekoppelde klant en werknemer (professional)
   const afspraken = await prisma.afspraak.findMany({
+    where: {
+      OR: [
+        // Zoeken op klantgegevens
+        { klant: { voornaam: { contains: query, mode: 'insensitive' } } },
+        { klant: { naam: { contains: query, mode: 'insensitive' } } },
+        // Zoeken op bedrijfsnaam
+        { werknemer: { bedrijf: { naam: { contains: query, mode: 'insensitive' } } } },
+        // Zoeken op naam van de professional (werknemer)
+        { werknemer: { voornaam: { contains: query, mode: 'insensitive' } } },
+        { werknemer: { naam: { contains: query, mode: 'insensitive' } } },
+      ],
+    },
     include: {
       klant: true,
       werknemer: {
@@ -35,11 +54,15 @@ export default async function AfsprakenPage() {
     }
   });
 
-return (
+  return (
     <div className="p-8 bg-[#0B0F1A] min-h-screen text-white">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Afspraken Overzicht</h1>
-        <p className="text-gray-400 mt-1">Klik op een professional of klant voor meer details</p>
+      <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Afspraken Overzicht</h1>
+          <p className="text-gray-400 mt-1">Klik op een professional of klant voor meer details</p>
+        </div>
+        {/* Zoekbalk toegevoegd, identiek aan klanten/bedrijven pagina */}
+        <SearchInput />
       </header>
 
       <div className="bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl border border-[#333]">
@@ -122,8 +145,8 @@ return (
         </table>
 
         {afspraken.length === 0 && (
-          <div className="p-20 text-center text-gray-500 italic">
-            Geen afspraken gevonden in de database.
+          <div className="p-20 text-center text-gray-400 italic">
+            Geen afspraken gevonden voor de zoekopdracht "{query}".
           </div>
         )}
       </div>

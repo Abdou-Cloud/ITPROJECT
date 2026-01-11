@@ -1,141 +1,120 @@
 // "use client";
 
 import React from 'react';
-import { CreditCard, TrendingUp, AlertCircle, CheckCircle2, XCircle, Building2 } from 'lucide-react';
+import { ExternalLink, ShieldCheck, Zap, Crown, Info, Building2 } from 'lucide-react';
+// We behouden de prisma import voor het geval je later weer data wilt koppelen, 
+// hoewel we nu primair naar Clerk verwijzen voor het beheer.
 import { prisma } from "@/lib/db";
+import Link from 'next/link';
 
 export default async function BetalingenPage() {
-  // 1. Haal alle bedrijven op uit de database
-  const alleBedrijven = await prisma.bedrijf.findMany({
-    orderBy: { created_at: 'desc' },
-    take: 10 // Voor de 'Recente Transacties' lijst
-  });
+  // De link naar het specifieke Clerk Billing dashboard
+  const CLERK_BILLING_URL = "https://dashboard.clerk.com/apps/app_36hmc7NNgugAxckJ0LQEj9Xt9xj/instances/ins_36hmc8vQKZEdrYYMUkhUUmOLuhJ/billing/plans";
 
+  // 1. Haal alle bedrijven op uit de database 
   const totaalBedrijven = await prisma.bedrijf.count();
 
-  // 2. Omdat je schema nog geen 'plan' veld heeft, verdelen we de huidige bedrijven 
-  // over de categorieën voor de demo-statistieken (dit kun je later aanpassen)
-  const basicCount = Math.ceil(totaalBedrijven * 0.4);
-  const proCount = Math.floor(totaalBedrijven * 0.4);
-  const enterpriseCount = totaalBedrijven - (basicCount + proCount);
-
-  // 3. Bereken MRR en ARR op basis van je prijsmodel
-  const mrr = (basicCount * 29) + (proCount * 79) + (enterpriseCount * 199);
-  const arr = mrr * 12;
+  // De betalingsplannen
+  const plans = [
+    {
+      name: "BASIC",
+      key: "basic_user",
+      trial: "Always free",
+      monthly: "-",
+      annually: "-",
+      icon: <ShieldCheck className="text-blue-400" size={20} />,
+      color: "border-blue-500/50"
+    },
+    {
+      name: "STARTER",
+      key: "start_user",
+      trial: "7 days",
+      monthly: "$59.00",
+      annually: "$588.00",
+      icon: <Zap className="text-purple-400" size={20} />,
+      color: "border-purple-500/50"
+    },
+    {
+      name: "PRO",
+      key: "pro_user",
+      trial: "7 days",
+      monthly: "$200.00",
+      annually: "$1,788.00",
+      icon: <Crown className="text-[#ff7a2d]" size={20} />,
+      color: "border-[#ff7a2d]/50"
+    }
+  ];
 
   return (
     <div className="p-8 space-y-8 bg-[#0B0F1A] min-h-screen text-white">
-      {/* Titel Sectie */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Betalingen & Abonnementen</h1>
-        <p className="text-gray-500 text-sm mt-1">Live overzicht op basis van {totaalBedrijven} geregistreerde bedrijven</p>
+      {/* Titel Sectie & Clerk Link */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-[#1e1e1e] p-6 rounded-2xl border border-[#333] shadow-xl">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Betalingen & Abonnementen</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Beheer actieve abonnementen en facturatie voor de {totaalBedrijven} geregistreerde bedrijven via Clerk.
+          </p>
+        </div>
+
+        <Link 
+          href={CLERK_BILLING_URL}
+          target="_blank"
+          className="flex items-center gap-2 bg-[#ff7a2d] hover:bg-[#ff7a2d]/90 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-orange-500/20 group"
+        >
+          Beheer in Clerk Dashboard
+          <ExternalLink size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+        </Link>
       </div>
 
-      {/* Financiële Overzichtskaarten */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard 
-          title="MRR (Monthly Recurring Revenue)" 
-          value={`€${mrr.toLocaleString('nl-BE')}`} 
-          trend="+12% groei" 
-          trendUp={true} 
-        />
-        <StatCard 
-          title="ARR (Annual Recurring Revenue)" 
-          value={`€${arr.toLocaleString('nl-BE')}`} 
-          trend="+8% prognose" 
-          trendUp={true} 
-        />
-        <StatCard 
-          title="Systeem Status" 
-          value="Actief" 
-          trend="Facturatie synchroon" 
-          isAlert={false} 
-        />
-      </div>
+      {/* Informatieve Sectie: Subscription Plans (gebaseerd op screenshot) */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-gray-400 px-1">
+          <Info size={16} />
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-500">Subscription plans</h2>
+        </div>
 
-      {/* Abonnement Plannen */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <PlanCard type="Basic" price="29" subscribers={basicCount} color="bg-blue-600" />
-        <PlanCard type="Pro" price="79" subscribers={proCount} color="bg-purple-600" />
-        <PlanCard type="Enterprise" price="199" subscribers={enterpriseCount} color="bg-[#ff7a2d]" />
-      </div>
-
-      {/* Recente Transacties Tabel (Gekoppeld aan Bedrijf model) */}
-      <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 shadow-sm">
-        <h2 className="font-bold text-white mb-6 flex items-center gap-2">
-          <CreditCard size={18} className="text-[#ff7a2d]" />
-          Recente Bedrijfsactiviteit
-        </h2>
-        <div className="space-y-3">
-          {alleBedrijven.map((bedrijf) => (
-            <TransactionRow 
-              key={bedrijf.bedrijf_id}
-              date={bedrijf.created_at.toLocaleDateString('nl-BE')} 
-              clinic={bedrijf.naam} 
-              email={bedrijf.email}
-              success={true} 
-            />
-          ))}
-          {alleBedrijven.length === 0 && (
-            <p className="text-gray-500 text-center py-4 italic text-sm">Geen bedrijven gevonden in de database.</p>
-          )}
+        <div className="overflow-hidden rounded-2xl border border-[#333] bg-[#1e1e1e] shadow-2xl">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-white/5 text-[10px] uppercase tracking-widest text-gray-500 font-bold border-b border-[#333]">
+                <th className="p-5">Plan</th>
+                <th className="p-5">Plan Key</th>
+                <th className="p-5">Trial</th>
+                <th className="p-5">Monthly</th>
+                <th className="p-5">Annually</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#333]">
+              {plans.map((plan) => (
+                <tr key={plan.name} className="hover:bg-white/[0.02] transition-colors group">
+                  <td className="p-5">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg bg-[#0B0F1A] border ${plan.color}`}>
+                        {plan.icon}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-100">{plan.name}</p>
+                        <p className="text-[10px] text-gray-500">Subscription plan</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-5 font-mono text-xs text-gray-400">{plan.key}</td>
+                  <td className="p-5 text-sm text-gray-300 font-medium">{plan.trial}</td>
+                  <td className="p-5 text-sm text-gray-100 font-bold">{plan.monthly}</td>
+                  <td className="p-5 text-sm text-gray-100 font-bold">{plan.annually}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
-  );
-}
 
-// Sub-componenten
-function StatCard({ title, value, trend, trendUp, isAlert }: any) {
-  return (
-    <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6">
-      <p className="text-[10px] text-gray-500 font-bold mb-2 uppercase tracking-widest">{title}</p>
-      <h3 className="text-3xl font-black text-white mb-2">{value}</h3>
-      <div className={`flex items-center gap-1 text-[11px] font-bold ${isAlert ? 'text-red-500' : 'text-green-500'}`}>
-        {isAlert ? <AlertCircle size={14} /> : <TrendingUp size={14} />}
-        {trend}
-      </div>
-    </div>
-  );
-}
-
-function PlanCard({ type, price, subscribers, color }: any) {
-  return (
-    <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 border-l-4" style={{ borderLeftColor: color === 'bg-[#ff7a2d]' ? '#ff7a2d' : '' }}>
-      <span className={`${color} text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-tighter`}>
-        {type}
-      </span>
-      <div className="mt-4 flex items-baseline gap-1">
-        <span className="text-3xl font-bold text-white">€{price}</span>
-        <span className="text-gray-500 text-xs">/maand</span>
-      </div>
-      <p className="mt-2 text-xs text-gray-400">{subscribers} actieve bedrijven</p>
-    </div>
-  );
-}
-
-function TransactionRow({ date, clinic, email, success }: any) {
-  return (
-    <div className="flex items-center justify-between p-4 bg-[#121212] border border-[#333] rounded-lg hover:border-[#444] transition-all">
-      <div className="flex items-center gap-8">
-        <span className="text-[10px] text-gray-600 font-mono w-20">{date}</span>
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-slate-800 rounded-lg text-gray-400">
-            <Building2 size={16} />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-200">{clinic}</p>
-            <p className="text-[10px] text-gray-500">{email}</p>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-4">
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-tighter">Betaling verwerkt</span>
-        {success ? (
-          <CheckCircle2 size={18} className="text-green-500" />
-        ) : (
-          <XCircle size={18} className="text-red-500" />
-        )}
+      {/* Footer Info Box */}
+      <div className="mt-6 p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg flex items-start gap-3">
+        <Info size={16} className="text-blue-400 mt-0.5" />
+        <p className="text-xs text-blue-400 italic">
+          Bovenstaande tabel dient ter referentie. Voor het aanmaken van nieuwe plannen of het wijzigen van prijzen, gebruik de "Create Plan" functie binnen het Clerk Dashboard.
+        </p>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import Link from 'next/link'; // Gebruikt voor de vaste navigatie van de Terugkn
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { 
-  ArrowLeft, Mail, Phone, Users, Brain, 
+  ArrowLeft, Mail, Phone, Users, 
   Check, Clock, Zap
 } from 'lucide-react';
 
@@ -21,7 +21,7 @@ export default async function BedrijfDetailPage({ params }: { params: { id: stri
     where: { bedrijf_id: id },
     include: {
       werknemers: true,
-      llmProfielen: true,
+      // llmProfielen verwijderd uit include
       _count: { select: { werknemers: true } }
     }
   });
@@ -29,9 +29,9 @@ export default async function BedrijfDetailPage({ params }: { params: { id: stri
   if (!bedrijf) return notFound();
 
   // Statistieken ophalen voor dit specifieke bedrijf
-  const [afsprakenCount, berichtenCount] = await Promise.all([
+  // berichtenCount verwijderd uit de Promise.all om overbodige database calls te voorkomen
+  const [afsprakenCount] = await Promise.all([
     prisma.afspraak.count({ where: { werknemer: { bedrijf_id: id } } }),
-    prisma.bericht.count({ where: { klant: { bedrijf_id: id } } })
   ]);
 
   return (
@@ -60,16 +60,12 @@ export default async function BedrijfDetailPage({ params }: { params: { id: stri
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 bg-[#1e1e1e] border border-[#333] rounded-xl text-center">
-               <Brain className="mx-auto mb-2 text-[#ff7a2d]" />
-               <p className="text-2xl font-bold">{berichtenCount}</p>
-               <p className="text-xs text-gray-500">AI Berichten</p>
-            </div>
+          <div className="grid grid-cols-2 gap-4">
+            {/* AI Berichten en AI Profielen verwijderd */}
             <div className="p-4 bg-[#1e1e1e] border border-[#333] rounded-xl text-center">
                <Zap className="mx-auto mb-2 text-[#ff7a2d]" />
-               <p className="text-2xl font-bold">{bedrijf.llmProfielen.length}</p>
-               <p className="text-xs text-gray-500">AI Profielen</p>
+               <p className="text-2xl font-bold">{afsprakenCount}</p>
+               <p className="text-xs text-gray-500">Totaal Afspraken</p>
             </div>
             <div className="p-4 bg-[#1e1e1e] border border-[#333] rounded-xl text-center">
                <Users className="mx-auto mb-2 text-[#ff7a2d]" />

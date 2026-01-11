@@ -1,6 +1,6 @@
 import React from 'react';
 import { prisma } from "@/lib/db";
-import { Mail, Phone, Calendar, MessageSquare, MoreHorizontal, User, ShieldCheck, UserCircle, Eye } from 'lucide-react';
+import { Mail, Phone, Calendar, User, ShieldCheck, UserCircle, Eye } from 'lucide-react'; // MessageSquare verwijderd
 import SearchInput from "@/components/admin/SearchInput"; // Voor de zoekbalk
 import Link from "next/link";
 
@@ -26,7 +26,7 @@ export default async function KlantenPage({
       _count: {
         select: { 
           afspraken: true, 
-          berichten: true 
+          // berichten count verwijderd
         }
       },
       // We halen de laatste afspraak op via de relatie
@@ -60,8 +60,8 @@ export default async function KlantenPage({
               <th className="px-6 py-4">Klant Gegevens</th>
               <th className="px-6 py-4">Status & Bedrijf</th>
               <th className="px-6 py-4 text-center">Totaal Afspraken</th>
-              <th className="px-6 py-4 text-center">AI Berichten</th>
-              <th className="px-6 py-4 text-center">Laatste Bezoek</th>
+              {/* AI Berichten kolomkop verwijderd */}
+              <th className="px-6 py-4 text-center">Volgende Afspraak</th>
               <th className="px-6 py-4 text-right">Actie</th>
             </tr>
           </thead>
@@ -110,13 +110,7 @@ export default async function KlantenPage({
                     {klant._count.afspraken}
                   </td>
                   
-                  {/* AI Berichten Count */}
-                  <td className="px-6 py-4 text-center">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/5 border border-blue-500/10 text-blue-400 text-sm">
-                      <MessageSquare size={14} />
-                      {klant._count.berichten}
-                    </div>
-                  </td>
+                  {/* AI Berichten cel verwijderd */}
                   
                   {/* Datum van laatste afspraak (start_datum) */}
                   <td className="px-6 py-4 text-center text-sm text-gray-400">
