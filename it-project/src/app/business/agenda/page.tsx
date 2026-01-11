@@ -257,15 +257,15 @@ export default function BusinessAgendaPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "bevestigd":
-        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+        return "bg-emerald-500/20 text-white border-emerald-500/30";
       case "gepland":
-        return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+        return "bg-orange-500/20 text-white border-orange-500/30";
       case "voltooid":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+        return "bg-blue-500/20 text-white border-blue-500/30";
       case "geannuleerd":
-        return "bg-red-500/20 text-red-400 border-red-500/30";
+        return "bg-red-500/20 text-white border-red-500/30";
       default:
-        return "bg-slate-500/20 text-slate-400 border-slate-500/30";
+        return "bg-slate-500/20 text-white border-slate-500/30";
     }
   };
 
@@ -445,7 +445,7 @@ export default function BusinessAgendaPage() {
                 {/* Mini Calendar */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold">
+                    <h3 className="font-semibold text-gray-400">
                       {format(currentMonth, "MMMM yyyy", { locale: nl })}
                     </h3>
                     <div className="flex gap-2">
@@ -509,11 +509,11 @@ export default function BusinessAgendaPage() {
                 <div className="border-t border-slate-700/50 pt-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400 text-sm">Deze maand</span>
-                    <span className="font-bold">{afsprakenDezeMaand} afspraken</span>
+                    <span className="font-bold text-gray-400">{afsprakenDezeMaand} afspraken</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400 text-sm">Deze week</span>
-                    <span className="font-bold">{afsprakenDezeWeek} afspraken</span>
+                    <span className="font-bold text-gray-400">{afsprakenDezeWeek} afspraken</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400 text-sm">Vandaag</span>
@@ -608,14 +608,14 @@ export default function BusinessAgendaPage() {
                             value={apt.status}
                             onValueChange={(value) => handleUpdateStatus(apt.afspraak_id, value)}
                           >
-                            <SelectTrigger className="w-32 bg-slate-800 border-slate-700 text-xs">
+                            <SelectTrigger className="w-32 bg-slate-800 border-slate-700 text-xs text-white">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-800 border-slate-700">
-                              <SelectItem value="gepland">Gepland</SelectItem>
-                              <SelectItem value="bevestigd">Bevestigd</SelectItem>
-                              <SelectItem value="voltooid">Voltooid</SelectItem>
-                              <SelectItem value="geannuleerd">Geannuleerd</SelectItem>
+                              <SelectItem value="gepland" className="text-white">Gepland</SelectItem>
+                              <SelectItem value="bevestigd" className="text-white">Bevestigd</SelectItem>
+                              <SelectItem value="voltooid" className="text-white">Voltooid</SelectItem>
+                              <SelectItem value="geannuleerd" className="text-white">Geannuleerd</SelectItem>
                             </SelectContent>
                           </Select>
                           <Button
