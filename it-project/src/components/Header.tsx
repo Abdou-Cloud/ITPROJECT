@@ -98,7 +98,7 @@ export function Header({ variant }: HeaderProps) {
                 <Button
                   variant="ghost"
                   asChild
-                  className="text-white hover:text-slate-300"
+                  className="text-white"
                 >
                   <Link href="/choose">Registreer</Link>
                 </Button>

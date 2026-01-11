@@ -134,13 +134,6 @@ export default function BusinessClientsPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="p-2 hover:bg-slate-700/50 rounded-lg transition text-slate-400 hover:text-white">
-              <Search className="w-5 h-5" />
-            </button>
-            <button className="p-2 hover:bg-slate-700/50 rounded-lg transition relative text-slate-400 hover:text-white">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-            </button>
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>
@@ -266,7 +259,7 @@ export default function BusinessClientsPage() {
 
                     <div className="flex items-center gap-6 min-w-fit">
                       <div className="text-right">
-                        <p className="font-semibold text-white">{client.afspraken?.length || 0}</p>
+                        <p className="font-semibold text-white">{client.afsprakenCount ?? client.afspraken?.length ?? 0}</p>
                         <p className="text-xs text-slate-400">Afspraken</p>
                       </div>
                       <div className="text-right">
@@ -274,9 +267,6 @@ export default function BusinessClientsPage() {
                         <p className="text-xs text-slate-500">Laatste contact</p>
                       </div>
                       {/* <div>{renderStars(client.rating)}</div> */}
-                      <button className="p-2 hover:bg-slate-700/50 rounded-lg transition text-slate-400 hover:text-white">
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
                     </div>
                   </div>
                 ))

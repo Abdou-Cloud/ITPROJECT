@@ -37,7 +37,7 @@ export function Hero() {
               <Link href="/dashboard">Ga naar dashboard</Link>
             </Button>
           </SignedIn>
-          <Button size="lg" variant="outline" asChild>
+          <Button size="lg" variant="outline" asChild className="text-black">
             <Link href="#demo">Bekijk demo</Link>
           </Button>
         </div>
