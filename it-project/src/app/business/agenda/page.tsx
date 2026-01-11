@@ -104,10 +104,10 @@ export default function BusinessAgendaPage() {
   // Fetch klanten
   const fetchKlanten = useCallback(async () => {
     try {
-      const response = await fetch("/api/klanten");
+      const response = await fetch("/api/business/klanten");
       if (response.ok) {
         const data = await response.json();
-        setKlanten(data);
+        setKlanten(data.klanten);
       }
     } catch (error) {
       console.error("Fout bij ophalen klanten:", error);
@@ -225,7 +225,13 @@ export default function BusinessAgendaPage() {
     isSameDay(new Date(apt.start_datum), selectedDate)
   );
 
-  // Kalender dagen genereren
+  // Kalender dagen genereren met padding zodat maandag altijd de eerste kolom is
+  const firstDayOfMonth = startOfMonth(currentMonth);
+  // In JS: 0 = zondag, 1 = maandag, ..., 6 = zaterdag
+  let jsDay = firstDayOfMonth.getDay();
+  // Zet zondag (0) om naar 7 zodat maandag = 1, zondag = 7
+  if (jsDay === 0) jsDay = 7;
+  const paddingDays = jsDay - 1; // aantal lege cellen voor de eerste dag
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(currentMonth),
     end: endOfMonth(currentMonth),
@@ -300,9 +306,13 @@ export default function BusinessAgendaPage() {
                 <Users className="w-4 h-4" />
                 Klanten
               </button>
-              <button onClick={() => router.push("/business/instellingen")} className="px-3 py-2 hover:bg-slate-700/50 rounded-lg transition flex items-center gap-2 text-slate-300 hover:text-white">
-                <Settings className="w-4 h-4" />
-                Instellingen
+              <button onClick={() => router.push("/business/beschikbaarheid")} className="px-3 py-2 hover:bg-slate-700/50 rounded-lg transition flex items-center gap-2 text-slate-300 hover:text-white">
+                <Clock className="w-4 h-4" />
+                Beschikbaarheid
+              </button>
+              <button onClick={() => router.push("/business/werknemers")} className="px-3 py-2 hover:bg-slate-700/50 rounded-lg transition flex items-center gap-2 text-slate-300 hover:text-white">
+                <BarChart3 className="w-4 h-4" />
+                Werknemers
               </button>
             </div>
           </div>
@@ -473,6 +483,10 @@ export default function BusinessAgendaPage() {
                       <div>Zo</div>
                     </div>
                     <div className="grid grid-cols-7 gap-1">
+                      {/* Padding voor de eerste week */}
+                      {Array.from({ length: paddingDays }).map((_, idx) => (
+                        <div key={"pad-" + idx}></div>
+                      ))}
                       {daysInMonth.map((day, i) => {
                         const hasAfspraken = afspraken.some((apt) => 
                           isSameDay(new Date(apt.start_datum), day)
