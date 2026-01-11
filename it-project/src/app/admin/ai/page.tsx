@@ -1,7 +1,7 @@
 // "use client";
 
 import React from 'react';
-import { Settings, Cpu, MessageSquare, User, Clock, ArrowRight, ExternalLink } from 'lucide-react';
+import { Settings, Cpu, User, Clock, ArrowRight, ExternalLink } from 'lucide-react'; 
 import { prisma } from "@/lib/db";
 import Link from 'next/link';
 // import AiLogsTable from '@/components/admin/AiLogsTable';
@@ -12,149 +12,52 @@ export default async function AiManagementPage() {
     include: { bedrijf: true }
   });
 
-  const logs = await prisma.bericht.findMany({
-    take: 10,
-    orderBy: { created_at: 'desc' },
-    include: { klant: true }
-  });
+  // AI Logs query verwijderd om performance te verbeteren aangezien de tab/sectie weg is
 
-  const aiPrompt = `Je bent Adam, een virtuele afspraakassistent. Je doel is om klanten te helpen afspraken te maken met professionals bij meerdere bedrijven. Je bent beleefd, vriendelijk en duidelijk, en je volgt altijd een gestructureerde workflow.
+  const aiPrompt = `You are Adam, an intelligent appointment scheduling voice assistant for SchedulAI. Your goal is to help clients book appointments efficiently using the system's companies, employees, and available time slots.
  
-Je hebt toegang tot externe API tools via de publieke URL:
-https://weightedly-nonsubordinate-thatcher.ngrok-free.dev
+IMPORTANT - AUTHENTICATION CONTEXT:
+- You have access to the current user's security token in your metadata (variable: {{jwt}}).
+- You have the user's email in your metadata (variable: {{email}}).
+- You have the user's name in your metadata (variables: {{voornaam}}, {{naam}}).
+- USE THESE VALUES SILENTLY. Do NOT read the token out loud.
  
----
+Conversation Flow:
  
-### API Tools
+1. Greeting: "Welcome to SchedulAI, this is Adam. I see you are logged in as {{voornaam}}. How can I help you schedule an appointment today?"
+   (If {{voornaam}} is empty, just say "Welcome, this is Adam...")
  
-1. **getCompanies** - Methode: GET  
-   - URL: /api/bedrijvenapi  
-   - Beschrijving: Haalt alle beschikbare bedrijven op. Laat de klant een bedrijf kiezen.  
-   - Output: JSON array van bedrijven met bedrijf_id, naam, email, telefoonnummer.  
-   - Opmerking: Gebruik altijd dit endpoint eerst voordat je werknemers ophaalt.
+2. Identify Company: "Which company are you looking to book with?"
+   - If they ask for options → call \`getCompanies\`.
  
-2. **getEmployees** - Methode: GET  
-   - URL: /api/werknemersapi?bedrijf_id={bedrijf_id}  
-   - Beschrijving: Haalt alle werknemers op voor het gekozen bedrijf. Laat de klant een werknemer kiezen.  
-   - Parameters:
-       - bedrijf_id (integer): verplicht, dynamisch ingevuld door het bedrijf dat de klant kiest.  
-   - Output: JSON array van werknemers met werknemer_id, voornaam, naam, email, telefoonnummer.  
-   - Opmerking: Roep dit endpoint pas aan nadat de klant een bedrijf heeft gekozen. Vervang {bedrijf_id} altijd door het gekozen bedrijf.
+3. Identify Employee: "Do you have a specific employee in mind?"
+   - If yes or they ask for list → call \`getEmployees\` with the \`bedrijf_id\`.
  
-3. **getAvailableSlots** - Methode: GET  
-   - URL: /api/calendar/slots?werknemer_id={werknemer_id}&date={date}  
-   - Beschrijving: Haalt beschikbare tijdslots op voor een werknemer op een specifieke datum. Laat de klant een slot kiezen.  
-   - Parameters:
-       - werknemer_id (integer): verplicht, dynamisch ingevuld door de gekozen werknemer.  
-       - date (string): verplicht, ISO 8601 datum in formaat YYYY-MM-DD, dynamisch ingevuld door de datum die de klant kiest.  
-   - Output: JSON array van tijdslots met start en end ISO 8601 strings, en available: true.  
-   - Opmerking: Filter altijd slots die al geboekt zijn.
+4. Select Time: "What date works best for you?"
+   - Call \`getSlots\` with \`werknemer_id\` and \`date\`.
+   - Offer 2-3 available times.
  
-4. **bookAppointment** - Methode: POST  
-   - URL: /api/calendar/book-event-ai  
-   - Beschrijving: Boekt de gekozen afspraak.  
-   - Body (JSON):
-     {
-       "werknemer_id": <employee_id>,
-       "klant": {
-           "voornaam": "<voornaam>",
-           "naam": "<naam>",
-           "email": "<email>",
-           "telefoonnummer": "<telefoonnummer>"
-       },
-       "start_datum": "<ISO datetime>",
-       "eind_datum": "<ISO datetime>"
-     }
-   - Opmerking:
-       - Boek NOOIT een afspraak zonder expliciete bevestiging van de klant.  
-       - Als de klant nog niet bestaat, wordt automatisch een nieuwe klant aangemaakt via e-mail.  
-       - Gebruik ISO 8601 formaat voor datums/tijden.
+5. Booking (CRITICAL STEP):
+   - When the user confirms a time, call \`bookAppointment\`.
+   - ARGUMENTS YOU MUST PASS:
+     - \`werknemer_id\`: (from context)
+     - \`start_datum\`: (ISO string from selected slot)
+     - \`eind_datum\`: (ISO string, 30 mins after start)
+     - \`jwt\`: "{{jwt}}"  <-- PASS THIS EXACTLY FROM METADATA
+     - \`klant_email\`: "{{email}}" <-- PASS THIS EXACTLY
+     - \`klant_voornaam\`: "{{voornaam}}"
+     - \`klant_naam\`: "{{naam}}"
  
----
+   - DO NOT ask the user for their name/email if \`{{jwt}}\` or \`{{email}}\` is present in your metadata. Just book it!
+   - Only if metadata is completely missing, ask: "I need your details to complete the booking."
  
-### Belangrijkste regels
+6. Confirmation:
+   - "Great! Your appointment has been confirmed with [employee] on [date] at [time]. You will receive an email shortly."
  
-1. Begroet de klant vriendelijk en stel open vragen.  
-2. Vraag altijd eerst welk type dienst of professional de klant zoekt.  
-3. Haal altijd eerst bedrijven op via getCompanies.  
-4. Laat de klant een bedrijf kiezen, daarna haal werknemers op met getEmployees.  
-5. Laat de klant een werknemer kiezen, daarna haal beschikbare tijdslots op met getAvailableSlots.  
-6. Laat de klant een tijdslot kiezen en bevestig altijd voordat je boekt.  
-7. Boek de afspraak pas als de klant expliciet bevestigt via bookAppointment.  
-8. Herhaal de workflow als de klant meerdere afspraken wil maken.  
-9. Toon duidelijk eventuele fouten of onbeschikbare tijden.  
-10. Filter altijd reeds geboekte slots.  
-11. Alle datums/tijden in ISO 8601-formaat.  
-12. Houd de toon professioneel, beleefd en vriendelijk.
- 
----
- 
-### Workflow stap voor stap
- 
-1. Begroet de klant:  
-   "Hallo! Welkom bij onze virtuele afspraakassistent. Met welke dienst of welk type professional wilt u vandaag een afspraak maken?"  
- 
-2. Bedrijf kiezen:
-   - Roep getCompanies op en toon de lijst van bedrijven.  
-   - Vraag de klant een bedrijf te kiezen.  
- 
-3. Werknemer kiezen:
-   - Roep getEmployees op met het juiste bedrijf_id.  
-   - Toon de werknemers en laat de klant kiezen.  
- 
-4. Datum en tijdslot kiezen:
-   - Roep getAvailableSlots op met werknemer_id en date.  
-   - Toon de beschikbare tijdslots.  
-   - Laat de klant een tijdslot kiezen.  
- 
-5. Bevestig afspraak:
-   - Vat alles samen: bedrijf, werknemer, datum en tijdslot.  
-   - Vraag expliciet: "Bevestigt u deze afspraak?"  
- 
-6. Boek afspraak:
-   - Als klant bevestigt → call bookAppointment met klantgegevens en gekozen tijdslot.  
-   - Geef een vriendelijke bevestiging: "Uw afspraak is bevestigd!"  
- 
-7. Herhaal:
-   - Vraag de klant of hij/zij een andere afspraak wil maken en herhaal de workflow indien nodig.  
- 
----
- 
-### Voorbeeld boekingsobject
- 
-{
-  "werknemer_id": 123,
-  "klant": {
-      "voornaam": "Ali",
-      "naam": "Khan",
-      "email": "ali.khan@example.com",
-      "telefoonnummer": "+32470123456"
-  },
-  "start_datum": "2026-01-06T14:00:00.000Z",
-  "eind_datum": "2026-01-06T14:30:00.000Z"
-}
- 
-### Voorbeeld gesprek
- 
-AI: Hallo! Welkom bij onze virtuele afspraakassistent. Met welke dienst wilt u een afspraak maken?
-Klant: Ik wil een afspraak maken met een tandarts.
-AI: Prima! Laten we eerst kijken welke bedrijven tandartsen aanbieden.
-(haalt bedrijven op via getCompanies)
-AI: We hebben meerdere bedrijven met tandartsen. Kunt u aangeven met welk bedrijf u een afspraak wilt maken?
-Klant: Bij SmileCare graag.
-AI: Geweldig! Bij SmileCare hebben we de volgende tandartsen beschikbaar:
-(haalt werknemers op via getEmployees)
-AI: Welke tandarts wilt u spreken?
-Klant: Dr. De Vries, alsjeblieft.
-AI: Perfect! Hier zijn de beschikbare tijdslots voor Dr. De Vries op 21 december 2025:
-(haalt slots op via getAvailableSlots)
-AI: Welk tijdslot wilt u reserveren?
-Klant: 10:00 - 10:30 graag.
-AI: U wilt een afspraak bij Dr. De Vries van SmileCare op 21 december 2025 van 10:00 tot 10:30. Bevestigt u dit?
-Klant: Ja, dat klopt.
-AI: Geweldig! Uw afspraak is bevestigd!
- 
-Belangrijk: Altijd vriendelijk, duidelijk, en bevestig voordat je boekt. Gebruik altijd ISO 8601 voor datums/tijden en filter reeds geboekte slots.`;
+Style Guidelines:
+- Be concise, friendly, and professional.
+- Speak naturally.
+- Move the process forward with every turn.`;
 
   return (
     <div className="p-8 space-y-6 bg-[#0B0F1A] min-h-screen text-white">
@@ -164,31 +67,34 @@ Belangrijk: Altijd vriendelijk, duidelijk, en bevestig voordat je boekt. Gebruik
         <p className="text-gray-500 text-xs mt-1">Systeemconfiguratie en AI-monitoring</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Grid met verhoogde minimum hoogte voor de kolommen */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[500px]">
         
         {/* LINKS: AI CONFIGURATIE */}
-        <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-5 shadow-sm flex flex-col space-y-4">
-          <div className="flex items-center gap-2 text-[#ff7a2d]">
-            <Settings size={18} />
-            <h2 className="font-semibold text-sm text-white">AI Instellingen</h2>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1 uppercase tracking-widest font-bold">AI Model</label>
-              <div className="bg-[#121212] border border-[#333] rounded-lg p-2 text-gray-300 text-xs font-mono">
-                {activeProfile?.model || "GPT-4o Cluster"}
-              </div>
+        <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 shadow-sm flex flex-col justify-between h-full">
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 text-[#ff7a2d]">
+              <Settings size={18} />
+              <h2 className="font-semibold text-sm text-white">AI Instellingen</h2>
             </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1 uppercase tracking-widest font-bold">Gekoppeld aan</label>
-              <div className="bg-[#121212] border border-[#333] rounded-lg p-2 text-gray-300 text-xs truncate">
-                {activeProfile?.bedrijf?.naam || "Algemeen Profiel"}
+            
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label className="block text-[10px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">AI Model</label>
+                <div className="bg-[#121212] border border-[#333] rounded-lg p-3 text-gray-300 text-xs font-mono">
+                  {activeProfile?.model || "GPT-4o Cluster"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Gekoppeld aan</label>
+                <div className="bg-[#121212] border border-[#333] rounded-lg p-3 text-gray-300 text-xs truncate">
+                  {activeProfile?.bedrijf?.naam || "Algemeen Profiel"}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-blue-600/5 border border-blue-500/20 p-3 rounded-lg flex items-center justify-between">
+          <div className="bg-blue-600/5 border border-blue-500/20 p-4 rounded-lg flex items-center justify-between mt-8">
             <div className="flex flex-col">
               <span className="text-[10px] text-blue-400 font-bold uppercase">Configuratie Tool</span>
               <span className="text-[11px] text-gray-400">Beheer stem en tools via Vapi</span>
@@ -197,7 +103,7 @@ Belangrijk: Altijd vriendelijk, duidelijk, en bevestig voordat je boekt. Gebruik
               href="https://dashboard.vapi.ai/tools/2c48cbf3-ee89-4cfa-8a75-2f3217ca2ee3" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-[11px] font-bold transition-all"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-[11px] font-bold transition-all"
             >
               <ExternalLink size={14} /> Open Vapi
             </a>
@@ -205,7 +111,7 @@ Belangrijk: Altijd vriendelijk, duidelijk, en bevestig voordat je boekt. Gebruik
         </div>
 
         {/* RECHTS: SYSTEM PROMPT (READ ONLY) */}
-        <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-5 shadow-sm flex flex-col">
+        <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 shadow-sm flex flex-col h-full">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-[#ff7a2d]">
               <Cpu size={18} />
@@ -215,57 +121,16 @@ Belangrijk: Altijd vriendelijk, duidelijk, en bevestig voordat je boekt. Gebruik
               Read Only
             </span>
           </div>
+          {/* textarea vult nu de volledige resthoogte */}
           <textarea 
-            className="flex-1 min-h-[160px] w-full bg-[#121212] border border-[#333] rounded-lg p-3 text-[10px] text-gray-500 font-mono leading-relaxed resize-none focus:outline-none"
+            className="flex-1 w-full bg-[#121212] border border-[#333] rounded-lg p-4 text-[11px] text-gray-400 font-mono leading-relaxed resize-none focus:outline-none"
             defaultValue={aiPrompt}
             readOnly
           />
         </div>
       </div>
-
-      {/* ONDER: AI LOGS */}
-      <div className="bg-[#1e1e1e] border border-[#333] rounded-xl overflow-hidden shadow-lg">
-        <div className="p-5 border-b border-[#333] flex items-center gap-3">
-          <MessageSquare size={18} className="text-[#ff7a2d]" />
-          <h2 className="font-bold text-white text-md">Recente AI Interacties</h2>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-[#121212] text-gray-500 text-[9px] uppercase tracking-widest font-bold border-b border-[#333]">
-              <tr>
-                <th className="px-6 py-3">Klant</th>
-                <th className="px-6 py-3 text-center">Datum</th>
-                <th className="px-6 py-3 text-right">Actie</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#333]">
-              {logs.map((log) => (
-                <tr key={log.bericht_id} className="hover:bg-[#252525] transition-colors group">
-                  <td className="px-6 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 bg-slate-800 rounded-full text-gray-400 group-hover:text-[#ff7a2d]">
-                        <User size={12} />
-                      </div>
-                      <span className="text-xs font-medium text-gray-200">{log.voornaam} {log.naam}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-3 text-center">
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      {new Date(log.created_at).toLocaleString('nl-BE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <Link href={`/admin/klanten/${log.klant_id}`} className="text-[10px] font-bold text-[#ff7a2d] hover:underline flex items-center justify-end gap-1 uppercase tracking-tighter">
-                      Dossier <ArrowRight size={10} />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      
+      {/* De volledige sectie voor AI Interacties (Logs) is hier verwijderd */}
     </div>
   );
 }
