@@ -108,3 +108,63 @@ export async function ensureBedrijfExists(userId: string) {
     throw error;
   }
 }
+
+/**
+ * Haal bedrijf_id op voor een gegeven Clerk userId.
+ * Probeert in deze volgorde: Admin (via clerkUserId), Werknemer (via email), Bedrijf (via email).
+ * Maakt GEEN nieuwe bedrijven aan - retourneert null als niets gevonden wordt.
+ * 
+ * @param userId - Clerk gebruikers-ID
+ * @returns bedrijf_id of null als geen bedrijf gevonden
+ */
+export async function getBedrijfIdForUser(userId: string): Promise<number | null> {
+  try {
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    
+    if (!user) {
+      return null;
+    }
+
+    const userEmail = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
+    
+    if (!userEmail) {
+      return null;
+    }
+
+    // 1. Probeer eerst Admin (via clerkUserId)
+    const admin = await prisma.admin.findUnique({
+      where: { clerkUserId: userId },
+      select: { bedrijf_id: true },
+    });
+
+    if (admin?.bedrijf_id) {
+      return admin.bedrijf_id;
+    }
+
+    // 2. Probeer Werknemer (via email)
+    const werknemer = await prisma.werknemer.findFirst({
+      where: { email: userEmail },
+      select: { bedrijf_id: true },
+    });
+
+    if (werknemer?.bedrijf_id) {
+      return werknemer.bedrijf_id;
+    }
+
+    // 3. Probeer Bedrijf direct (via email)
+    const bedrijf = await prisma.bedrijf.findFirst({
+      where: { email: userEmail },
+      select: { bedrijf_id: true },
+    });
+
+    if (bedrijf?.bedrijf_id) {
+      return bedrijf.bedrijf_id;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Fout bij ophalen bedrijf_id:", error);
+    return null;
+  }
+}

@@ -309,7 +309,7 @@ export default function WerknemersPage() {
                 ) : (
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-lg">{w.voornaam} {w.naam}</div>
+                      <div className="font-semibold text-lg text-gray-400">{w.voornaam} {w.naam}</div>
                       <div className="text-slate-400 text-sm">{w.email}</div>
                     </div>
                     <Button

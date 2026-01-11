@@ -219,7 +219,7 @@ export default function BusinessClientsPage() {
         <Card className="bg-slate-800/30 border border-slate-700/50">
           <CardHeader className="border-b border-slate-700/50">
             <div className="flex items-center justify-between">
-              <CardTitle>Alle klanten ({filteredClients.length})</CardTitle>
+              <CardTitle className="text-gray-400">Alle klanten ({filteredClients.length})</CardTitle>
               <div className="text-xs text-slate-400">Sorteren op: Naam</div>
             </div>
           </CardHeader>
@@ -243,8 +243,8 @@ export default function BusinessClientsPage() {
                         {client.voornaam?.[0]}{client.naam?.[0]}
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-white">{client.voornaam} {client.naam}</h3>
-                        <div className="flex items-center gap-4 text-sm text-slate-400">
+                        <h3 className="font-semibold text-gray-400">{client.voornaam} {client.naam}</h3>
+                        <div className="flex items-center gap-4 text-sm text-gray-400">
                           <div className="flex items-center gap-1">
                             <Mail className="w-3 h-3" />
                             {client.email}

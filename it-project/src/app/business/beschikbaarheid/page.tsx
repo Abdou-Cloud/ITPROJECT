@@ -327,7 +327,7 @@ export default function BeschikbaarheidPage() {
             {rooster.map((item, idx) => (
               <Card key={item.dag} className="bg-slate-800/80 border border-slate-700/50">
                 <CardContent className="p-4 flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="font-semibold w-32">{item.dag}</div>
+                  <div className="font-semibold w-32 text-gray-400">{item.dag}</div>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -335,7 +335,7 @@ export default function BeschikbaarheidPage() {
                       onChange={(e) => handleChange(idx, "open", e.target.checked)}
                       className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-orange-500 focus:ring-orange-500"
                     />
-                    <span>Open</span>
+                    <span className="text-gray-400">Open</span>
                   </label>
                   {item.open && (
                     <div className="flex items-center gap-2 flex-wrap">

@@ -684,7 +684,7 @@ export default function AIVoiceAssistantPage() {
 
                   {/* Bedrijf dropdown */}
                   <select
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500 focus:bg-slate-800 focus:text-white active:bg-slate-800 active:text-white"
                     value={bedrijfId}
                     onChange={(e) => setBedrijfId(e.target.value ? Number(e.target.value) : "")}
                     disabled={loadingBedrijven}
@@ -711,7 +711,7 @@ export default function AIVoiceAssistantPage() {
                   </p>
 
                   <select
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500 focus:bg-slate-800 focus:text-white active:bg-slate-800 active:text-white"
                     value={werknemerId}
                     onChange={(e) => setWerknemerId(e.target.value ? Number(e.target.value) : "")}
                     disabled={bedrijfId === "" || loadingWerknemers}

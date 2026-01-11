@@ -1,6 +1,7 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getBedrijfIdForUser } from "@/lib/bedrijf-sync";
 
 // PUT - Update een werknemer
 export async function PUT(
@@ -31,23 +32,11 @@ export async function PUT(
       );
     }
 
-    // Haal email op van Clerk gebruiker om bedrijf te verifiëren
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const userEmail = user?.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
-    
-    if (!userEmail) {
-      return NextResponse.json({ error: "Gebruiker email niet gevonden" }, { status: 404 });
-    }
+    // Haal bedrijf_id op voor de gebruiker
+    const bedrijfId = await getBedrijfIdForUser(userId);
 
-    // Zoek de werknemer op basis van email om bedrijf_id te krijgen
-    const huidigeWerknemer = await prisma.werknemer.findFirst({
-      where: { email: userEmail },
-      select: { bedrijf_id: true },
-    });
-
-    if (!huidigeWerknemer) {
-      return NextResponse.json({ error: "Werknemer niet gevonden" }, { status: 404 });
+    if (!bedrijfId) {
+      return NextResponse.json({ error: "Bedrijf niet gevonden" }, { status: 404 });
     }
 
     // Controleer of de doelwerknemer bestaat
@@ -60,8 +49,8 @@ export async function PUT(
       return NextResponse.json({ error: "Werknemer niet gevonden" }, { status: 404 });
     }
 
-    // Verifieer dat beide werknemers bij hetzelfde bedrijf horen
-    if (huidigeWerknemer.bedrijf_id !== doelWerknemer.bedrijf_id) {
+    // Verifieer dat de doelwerknemer bij hetzelfde bedrijf hoort
+    if (bedrijfId !== doelWerknemer.bedrijf_id) {
       return NextResponse.json({ error: "Geen toegang tot deze werknemer" }, { status: 403 });
     }
 

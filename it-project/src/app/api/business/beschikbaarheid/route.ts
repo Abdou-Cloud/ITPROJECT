@@ -1,6 +1,7 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getBedrijfIdForUser } from "@/lib/bedrijf-sync";
 
 // GET - Haal alle werknemers op met hun beschikbaarheden voor het bedrijf
 export async function GET(request: NextRequest) {
@@ -11,28 +12,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Niet geautoriseerd" }, { status: 401 });
     }
 
-    // Haal email op van Clerk gebruiker
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const userEmail = user?.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
-    
-    if (!userEmail) {
-      return NextResponse.json({ error: "Gebruiker email niet gevonden" }, { status: 404 });
-    }
+    // Haal bedrijf_id op voor de gebruiker
+    const bedrijfId = await getBedrijfIdForUser(userId);
 
-    // Zoek de werknemer op basis van email
-    const werknemer = await prisma.werknemer.findFirst({
-      where: { email: userEmail },
-      select: { bedrijf_id: true },
-    });
-
-    if (!werknemer) {
-      return NextResponse.json({ error: "Werknemer niet gevonden" }, { status: 404 });
+    if (!bedrijfId) {
+      return NextResponse.json({ error: "Bedrijf niet gevonden" }, { status: 404 });
     }
 
     // Haal alle werknemers op van het bedrijf met hun beschikbaarheden
     const werknemers = await prisma.werknemer.findMany({
-      where: { bedrijf_id: werknemer.bedrijf_id },
+      where: { bedrijf_id: bedrijfId },
       select: {
         werknemer_id: true,
         voornaam: true,
@@ -80,23 +69,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "beschikbaarheden moet een array zijn" }, { status: 400 });
     }
 
-    // Haal email op van Clerk gebruiker om bedrijf te verifiëren
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const userEmail = user?.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
-    
-    if (!userEmail) {
-      return NextResponse.json({ error: "Gebruiker email niet gevonden" }, { status: 404 });
-    }
+    // Haal bedrijf_id op voor de gebruiker
+    const bedrijfId = await getBedrijfIdForUser(userId);
 
-    // Verifieer dat de werknemer bestaat en bij hetzelfde bedrijf hoort
-    const huidigeWerknemer = await prisma.werknemer.findFirst({
-      where: { email: userEmail },
-      select: { bedrijf_id: true },
-    });
-
-    if (!huidigeWerknemer) {
-      return NextResponse.json({ error: "Werknemer niet gevonden" }, { status: 404 });
+    if (!bedrijfId) {
+      return NextResponse.json({ error: "Bedrijf niet gevonden" }, { status: 404 });
     }
 
     const doelWerknemer = await prisma.werknemer.findUnique({
@@ -108,8 +85,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Doel werknemer niet gevonden" }, { status: 404 });
     }
 
-    // Verifieer dat beide werknemers bij hetzelfde bedrijf horen
-    if (huidigeWerknemer.bedrijf_id !== doelWerknemer.bedrijf_id) {
+    // Verifieer dat de doelwerknemer bij hetzelfde bedrijf hoort
+    if (bedrijfId !== doelWerknemer.bedrijf_id) {
       return NextResponse.json({ error: "Geen toegang tot deze werknemer" }, { status: 403 });
     }
 
