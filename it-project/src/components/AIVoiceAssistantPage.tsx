@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Icon } from "@/components/Icon";
 import { useVapiCall } from "@/hooks/useVapiCall";
+import { getCurrentUser } from "@/lib/api";
+import { useUserToken } from "@/hooks/useUserToken"
+
 
 type ChecklistItem = { text: string };
 
@@ -118,6 +121,24 @@ function toHHMM(d: Date) {
 // buildSlots functie verwijderd - we gebruiken nu beschikbare slots van de API
 
 export default function AIVoiceAssistantPage() {
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const { user, isSignedIn, getUserToken } = useUserToken();
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await getCurrentUser(); // haalt /api/me op
+        setCurrentUser(user);
+      } catch (err) {
+        console.error("Fout bij ophalen gebruiker:", err);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
   // Vapi call hook voor AI voice assistant
   const {
     callActive,
@@ -128,7 +149,9 @@ export default function AIVoiceAssistantPage() {
     error,
     toggleCall,
     messageContainerRef,
-  } = useVapiCall();
+  } = useVapiCall({
+    customer: currentUser,
+  });
 
   const checklist = useMemo<ChecklistItem[]>(
     () => [
@@ -194,7 +217,7 @@ export default function AIVoiceAssistantPage() {
         if (searchQuery.trim()) {
           params.set("search", searchQuery.trim());
         }
-        
+
         const res = await fetch(`/api/bedrijven?${params.toString()}`);
         if (!res.ok) {
           const j = await res.json().catch(() => null);
@@ -258,7 +281,7 @@ export default function AIVoiceAssistantPage() {
           throw new Error(j?.error ?? "Beschikbare slots ophalen mislukt");
         }
         const slotsData = await slotsRes.json();
-        
+
         // Converteer slots naar tijd strings (HH:MM)
         const slotTimes = slotsData.slots.map((slot: { start: string }) => {
           const start = new Date(slot.start);
@@ -344,6 +367,11 @@ export default function AIVoiceAssistantPage() {
         <h1 className="text-4xl font-bold tracking-tight text-white">
           AI Voice Assistant
         </h1>
+        {!loadingUser && currentUser && (
+          <p className="mt-2 text-xs text-green-400">
+            Ingelogd als klant #{currentUser.klant_id}
+          </p>
+        )}
 
         <p className="text-sm md:text-base text-slate-300 max-w-3xl">
           Laat je AI assistent direct telefonisch afspraken maken - 24/7 beschikbaar voor je klanten
@@ -483,7 +511,7 @@ export default function AIVoiceAssistantPage() {
 
                   {/* Transcript Messages */}
                   {messages.length > 0 && (
-                    <div 
+                    <div
                       ref={messageContainerRef}
                       className="mt-4 max-h-48 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/40 p-4 space-y-2"
                     >
@@ -512,14 +540,13 @@ export default function AIVoiceAssistantPage() {
                   )}
 
                   <div className="mt-5">
-                    <Button 
+                    <Button
                       onClick={toggleCall}
                       disabled={connecting}
-                      className={`w-full h-11 rounded-xl ${
-                        callActive 
-                          ? 'bg-red-500 hover:bg-red-600 text-white' 
-                          : 'bg-orange-500 hover:bg-orange-600 text-white'
-                      }`}
+                      className={`w-full h-11 rounded-xl ${callActive
+                        ? 'bg-red-500 hover:bg-red-600 text-white'
+                        : 'bg-orange-500 hover:bg-orange-600 text-white'
+                        }`}
                     >
                       <span className="flex items-center justify-center gap-2">
                         <Icon name={callActive ? "phone-off" : "phone"} className="h-4 w-4" />
@@ -690,10 +717,10 @@ export default function AIVoiceAssistantPage() {
                     disabled={bedrijfId === "" || loadingWerknemers}
                   >
                     <option value="">
-                      {bedrijfId === "" 
-                        ? "Selecteer eerst een bedrijf" 
-                        : loadingWerknemers 
-                          ? "Laden..." 
+                      {bedrijfId === ""
+                        ? "Selecteer eerst een bedrijf"
+                        : loadingWerknemers
+                          ? "Laden..."
                           : `Selecteer werknemer (${werknemers.length} beschikbaar)`}
                     </option>
                     {werknemers.map((w) => (

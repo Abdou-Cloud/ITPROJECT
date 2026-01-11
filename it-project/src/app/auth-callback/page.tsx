@@ -46,7 +46,7 @@ function AuthCallbackContent() {
           } catch (error) {
             console.error("Fout bij synchroniseren bedrijf:", error);
           }
-          router.push("/business/dashboard");
+          router.push("/business/agenda");
         } else {
           // Ensure Klant exists for client users
           try {
@@ -85,7 +85,7 @@ function AuthCallbackContent() {
             } catch (error) {
               console.error("Fout bij synchroniseren bedrijf:", error);
             }
-            router.push("/business/dashboard");
+            router.push("/business/agenda");
           } else {
             // Ensure Klant exists for client users
             try {
@@ -129,7 +129,7 @@ function AuthCallbackContent() {
             console.error("Fout bij synchroniseren bedrijf:", error);
             // Blijf doorgaan, maar log de error
           }
-          router.push("/business/dashboard");
+          router.push("/business/agenda");
         }
       } catch (error) {
         console.error("Fout bij controleren user type:", error);

@@ -1,7 +1,6 @@
 // prisma/seed.ts (of waar jouw seed file staat)
 
-import { PrismaClient } from "../src/generated/prisma"; // pas aan als jouw output pad anders is
-
+import { PrismaClient } from "../src/generated/prisma";
 const prisma = new PrismaClient();
 
 async function main() {
@@ -295,7 +294,7 @@ async function main() {
   //    - Maak beschikbaarheden voor alle werknemers
   //    - Standaard werkweek: maandag t/m vrijdag, 09:00 - 17:00
   // =========================
-  
+
   // Verwijder bestaande beschikbaarheden eerst (optioneel, voor clean seed)
   await prisma.beschikbaarheid.deleteMany({});
 

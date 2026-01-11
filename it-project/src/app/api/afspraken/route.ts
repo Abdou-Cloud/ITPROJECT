@@ -3,7 +3,6 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { resend } from "@/lib/resend";
 
-
 // GET - Haal afspraken op
 // Ondersteunt twee flows:
 // 1. Business flow: werknemer haalt eigen afspraken op (met optionele date range)
@@ -25,9 +24,14 @@ export async function GET(request: NextRequest) {
 
     // CLIENT FLOW: Klant vraagt bezette slots op voor een specifieke werknemer
     if (werknemerIdParam && dateParam) {
+      const werknemerId = Number(werknemerIdParam);
+      if (isNaN(werknemerId)) {
+        return NextResponse.json({ error: "Ongeldig werknemerId" }, { status: 400 });
+      }
+
       // Controleer of de werknemer bestaat
       const werknemer = await prisma.werknemer.findUnique({
-        where: { werknemer_id: Number(werknemerIdParam) },
+        where: { werknemer_id: werknemerId },
       });
 
       if (!werknemer) {
@@ -45,11 +49,12 @@ export async function GET(request: NextRequest) {
 
       const afspraken = await prisma.afspraak.findMany({
         where: {
-          werknemer_id: Number(werknemerIdParam),
+          werknemer_id: werknemerId,
           start_datum: {
             gte: startOfDay,
             lte: endOfDay,
           },
+          status: { not: "geannuleerd" } // Alleen actieve afspraken blokkeren slots
         },
         select: {
           afspraak_id: true,
@@ -67,7 +72,8 @@ export async function GET(request: NextRequest) {
 
     // BUSINESS FLOW: Werknemer haalt eigen afspraken op
     // Zoek de werknemer op basis van email (Werknemer heeft geen clerkUserId in schema)
-    const user = await clerkClient().then(client => client.users.getUser(userId));
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
     const userEmail = user?.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
     
     if (!userEmail) {
@@ -79,14 +85,13 @@ export async function GET(request: NextRequest) {
     });
 
     if (!werknemer) {
-      return NextResponse.json({ error: "Werknemer niet gevonden" }, { status: 404 });
+      // Als de gebruiker geen werknemer is, geven we een lege lijst terug in plaats van een 404
+      // Dit voorkomt foutmeldingen in het dashboard voor admins of nieuwe accounts
+      return NextResponse.json([]);
     }
 
     // Bouw de where clause voor filtering
-    const whereClause: {
-      werknemer_id: number;
-      start_datum?: { gte?: Date; lte?: Date };
-    } = {
+    const whereClause: any = {
       werknemer_id: werknemer.werknemer_id,
     };
 
@@ -105,6 +110,7 @@ export async function GET(request: NextRequest) {
       include: {
         klant: {
           select: {
+            voornaam: true,
             naam: true,
             email: true,
             telefoonnummer: true,
@@ -120,7 +126,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Fout bij ophalen afspraken:", error);
     return NextResponse.json(
-      { error: "Er is een fout opgetreden" },
+      { error: "Er is een fout opgetreden bij het ophalen van de gegevens" },
       { status: 500 }
     );
   }
@@ -183,44 +189,37 @@ export async function POST(request: NextRequest) {
       if (!klant) {
         console.log(`[Booking API] Klant not found for userId: ${userId}, attempting to sync...`);
         try {
-          // Import and call ensureKlantExists
           const { ensureKlantExists } = await import("@/lib/klant-sync");
           await ensureKlantExists(userId);
           
-          // Fetch the klant again after sync
           klant = await prisma.klant.findUnique({
             where: { clerkUserId: userId },
           });
 
           if (!klant) {
-            console.error(`[Booking API] Klant still not found after sync for userId: ${userId}`);
             return NextResponse.json(
-              { error: "Klant niet gevonden en synchronisatie mislukt" },
+              { error: "Klant profiel kon niet worden aangemaakt" },
               { status: 404 }
             );
           }
-
-          console.log(`[Booking API] ✓ Klant successfully synced and found, klant_id: ${klant.klant_id}`);
         } catch (syncError) {
-          console.error(`[Booking API] Error syncing Klant for userId: ${userId}`, syncError);
+          console.error(`[Booking API] Error syncing Klant:`, syncError);
           return NextResponse.json(
-            { error: "Klant niet gevonden en synchronisatie mislukt" },
+            { error: "Synchronisatie van klantgegevens mislukt" },
             { status: 404 }
           );
         }
       }
 
       // Controleer of de werknemer bestaat
+      const wId = Number(werknemerId);
       const werknemer = await prisma.werknemer.findUnique({
-        where: { werknemer_id: Number(werknemerId) },
+        where: { werknemer_id: wId },
       });
 
       if (!werknemer) {
         return NextResponse.json({ error: "Werknemer niet gevonden" }, { status: 404 });
       }
-
-      // Note: Customers can book with any employee from any company (platform-wide booking)
-      // No bedrijf_id validation needed - customers are platform-wide users
 
       // Check if booking time falls within werknemer's beschikbaarheden
       const dayNames = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
@@ -228,12 +227,8 @@ export async function POST(request: NextRequest) {
       
       const beschikbaarheden = await prisma.beschikbaarheid.findMany({
         where: {
-          werknemer_id: Number(werknemerId),
+          werknemer_id: wId,
           dag: dayOfWeek,
-        },
-        select: {
-          start_tijd: true,
-          eind_tijd: true,
         },
       });
 
@@ -245,183 +240,81 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if booking time falls within any beschikbaarheid window
-      // Gebruik lokale tijd voor consistentie (seed gebruikt lokale tijd zonder Z)
-      const bookingStartHour = startDateTime.getHours();
-      const bookingStartMinute = startDateTime.getMinutes();
-      const bookingEndHour = endDateTime.getHours();
-      const bookingEndMinute = endDateTime.getMinutes();
-
-      const isWithinBeschikbaarheid = beschikbaarheden.some((beschikbaarheid) => {
-        const beschikbaarheidStart = new Date(beschikbaarheid.start_tijd);
-        const beschikbaarheidEnd = new Date(beschikbaarheid.eind_tijd);
+      const isWithinBeschikbaarheid = beschikbaarheden.some((b) => {
+        const bStart = new Date(b.start_tijd);
+        const bEnd = new Date(b.eind_tijd);
         
-        // Gebruik lokale tijd voor beschikbaarheden (consistent met seed)
-        const beschikbaarheidStartHour = beschikbaarheidStart.getHours();
-        const beschikbaarheidStartMinute = beschikbaarheidStart.getMinutes();
-        const beschikbaarheidEndHour = beschikbaarheidEnd.getHours();
-        const beschikbaarheidEndMinute = beschikbaarheidEnd.getMinutes();
+        const bookingStartMinutes = startDateTime.getHours() * 60 + startDateTime.getMinutes();
+        const bookingEndMinutes = endDateTime.getHours() * 60 + endDateTime.getMinutes();
+        const bStartMinutes = bStart.getHours() * 60 + bStart.getMinutes();
+        const bEndMinutes = bEnd.getHours() * 60 + bEnd.getMinutes();
 
-        // Convert to minutes for easier comparison
-        const bookingStartMinutes = bookingStartHour * 60 + bookingStartMinute;
-        const bookingEndMinutes = bookingEndHour * 60 + bookingEndMinute;
-        const beschikbaarheidStartMinutes = beschikbaarheidStartHour * 60 + beschikbaarheidStartMinute;
-        const beschikbaarheidEndMinutes = beschikbaarheidEndHour * 60 + beschikbaarheidEndMinute;
-
-        // Check if booking is completely within beschikbaarheid window
-        return bookingStartMinutes >= beschikbaarheidStartMinutes && 
-               bookingEndMinutes <= beschikbaarheidEndMinutes;
+        return bookingStartMinutes >= bStartMinutes && bookingEndMinutes <= bEndMinutes;
       });
 
       if (!isWithinBeschikbaarheid) {
         return NextResponse.json(
-          { error: "Dit tijdslot valt buiten de beschikbaarheid van de werknemer" },
+          { error: "Dit tijdslot valt buiten de werktijden van de werknemer" },
           { status: 400 }
         );
       }
 
-      // Check for overlapping appointments to ensure time slot is available
+      // Check for overlapping appointments
       const overlappingAppointment = await prisma.afspraak.findFirst({
         where: {
-          werknemer_id: Number(werknemerId),
-          start_datum: {
-            lt: endDateTime,
-          },
-          eind_datum: {
-            gt: startDateTime,
-          },
-          status: {
-            not: "geannuleerd",
-          },
+          werknemer_id: wId,
+          status: { not: "geannuleerd" },
+          OR: [
+            {
+              start_datum: { lt: endDateTime },
+              eind_datum: { gt: startDateTime },
+            }
+          ]
         },
       });
 
       if (overlappingAppointment) {
-        return NextResponse.json(
-          { error: "Dit tijdslot is al bezet" },
-          { status: 409 }
-        );
+        return NextResponse.json({ error: "Dit tijdslot is al bezet" }, { status: 409 });
       }
 
       // Maak de afspraak aan
       const afspraak = await prisma.afspraak.create({
         data: {
-          werknemer_id: Number(werknemerId),
+          werknemer_id: wId,
           klant_id: klant.klant_id,
           start_datum: startDateTime,
           eind_datum: endDateTime,
           status: status || "gepland",
         },
         include: {
-  werknemer: {
-    select: {
-      werknemer_id: true,
-      voornaam: true,
-      naam: true,
-      email: true,
-      telefoonnummer: true,
-      bedrijf: {
-        select: {
-          naam: true,
-          email: true,
+          werknemer: {
+            include: { bedrijf: true }
+          },
+          klant: true,
         },
-      },
-    },
-  },
-  klant: {
-    select: {
-      klant_id: true,
-      voornaam: true,
-      naam: true,
-      email: true,
-      telefoonnummer: true,
-    },
-  },
-},
       });
 
-      // Verstuur bevestigingsmail naar klant
+      // Verstuur bevestigingsmail naar klant via Resend
       if (afspraak.klant?.email) {
         try {
-          const startDate = new Date(afspraak.start_datum);
-          const endDate = new Date(afspraak.eind_datum);
-          const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60)); // Minuten
-
+          const sDate = new Date(afspraak.start_datum);
           await resend.emails.send({
             from: "SchedulAI <onboarding@resend.dev>",
             to: afspraak.klant.email,
             subject: "Afspraak Bevestigd 📅",
             html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #ff7a2d 0%, #ff5722 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-                  <h1 style="color: white; margin: 0; font-size: 28px;">Afspraak Bevestigd!</h1>
-                </div>
-                <div style="background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                  <p style="color: #333; font-size: 16px; line-height: 1.6;">Hallo ${afspraak.klant.voornaam || 'Klant'},</p>
-                  <p style="color: #666; font-size: 15px; line-height: 1.6;">Uw afspraak is succesvol bevestigd. Hier zijn de details:</p>
-                  <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                      <tr>
-                        <td style="padding: 8px 0; color: #666; font-weight: bold; width: 150px;">Werknemer:</td>
-                        <td style="padding: 8px 0; color: #333;">${afspraak.werknemer.voornaam} ${afspraak.werknemer.naam}</td>
-                      </tr>
-                      ${afspraak.werknemer.bedrijf ? `
-                      <tr>
-                        <td style="padding: 8px 0; color: #666; font-weight: bold;">Bedrijf:</td>
-                        <td style="padding: 8px 0; color: #333;">${afspraak.werknemer.bedrijf.naam}</td>
-                      </tr>
-                      ` : ''}
-                      <tr>
-                        <td style="padding: 8px 0; color: #666; font-weight: bold;">Datum:</td>
-                        <td style="padding: 8px 0; color: #333;">${startDate.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #666; font-weight: bold;">Tijd:</td>
-                        <td style="padding: 8px 0; color: #333;">${startDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #666; font-weight: bold;">Duur:</td>
-                        <td style="padding: 8px 0; color: #333;">${duration} minuten</td>
-                      </tr>
-                    </table>
-                  </div>
-                  <p style="color: #666; font-size: 14px; line-height: 1.6; margin-top: 20px;">
-                    Gelieve 15 minuten voor uw afspraak aanwezig te zijn. Als u wilt wijzigen of annuleren, neem dan minstens 24 uur van tevoren contact met ons op.
-                  </p>
-                  <p style="color: #666; font-size: 14px; line-height: 1.6; margin-top: 20px;">
-                    Met vriendelijke groet,<br>
-                    <strong>SchedulAI</strong>
-                  </p>
-                </div>
+              <div style="font-family: sans-serif;">
+                <h2>Afspraak Bevestigd</h2>
+                <p>Hallo ${afspraak.klant.voornaam},</p>
+                <p>Je afspraak bij <strong>${afspraak.werknemer.bedrijf?.naam || 'ons'}</strong> is bevestigd.</p>
+                <p><strong>Datum:</strong> ${sDate.toLocaleDateString('nl-NL')}<br>
+                <strong>Tijd:</strong> ${sDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</p>
+                <p>Met vriendelijke groet,<br>Het SchedulAI Team</p>
               </div>
             `,
           });
-          console.log(`[Booking API] Bevestigingsmail verstuurd naar klant: ${afspraak.klant.email}`);
         } catch (e) {
-          console.error("[Booking API] Fout bij versturen bevestigingsmail naar klant:", e);
-        }
-      }
-
-      // Verstuur notificatie naar bedrijf
-      if (afspraak.werknemer?.bedrijf?.email) {
-        try {
-          await resend.emails.send({
-            from: "SchedulAI <onboarding@resend.dev>",
-            to: afspraak.werknemer.bedrijf.email,
-            subject: "Nieuwe afspraak bevestigd 📅",
-            html: `
-              <p>Hallo ${afspraak.werknemer.bedrijf.naam},</p>
-              <p>Er is een nieuwe afspraak bevestigd.</p>
-              <ul>
-                <li><strong>Klant:</strong> ${afspraak.klant.voornaam} ${afspraak.klant.naam}</li>
-                <li><strong>Werknemer:</strong> ${afspraak.werknemer.voornaam} ${afspraak.werknemer.naam}</li>
-                <li><strong>Wanneer:</strong> ${new Date(afspraak.start_datum).toLocaleString("nl-NL")}</li>
-              </ul>
-              <p>— SchedulAI</p>
-            `,
-          });
-          console.log(`[Booking API] Notificatie verstuurd naar bedrijf: ${afspraak.werknemer.bedrijf.email}`);
-        } catch (e) {
-          console.error("[Booking API] Fout bij versturen notificatie naar bedrijf:", e);
+          console.error("Mail error:", e);
         }
       }
 
@@ -429,31 +322,22 @@ export async function POST(request: NextRequest) {
     }
 
     // BUSINESS FLOW: Werknemer maakt afspraak met klant
-    // Validatie
     if (!klant_id || !start_datum || !eind_datum) {
-      return NextResponse.json(
-        { error: "Klant, startdatum en einddatum zijn verplicht" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Klant, startdatum en einddatum zijn verplicht" }, { status: 400 });
     }
 
-    // Zoek de werknemer op basis van email (Werknemer heeft geen clerkUserId in schema)
-    const user = await clerkClient().then(client => client.users.getUser(userId));
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
     const userEmail = user?.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
     
-    if (!userEmail) {
-      return NextResponse.json({ error: "Gebruiker email niet gevonden" }, { status: 404 });
-    }
-
     const werknemer = await prisma.werknemer.findFirst({
       where: { email: userEmail },
     });
 
     if (!werknemer) {
-      return NextResponse.json({ error: "Werknemer niet gevonden" }, { status: 404 });
+      return NextResponse.json({ error: "Werknemer profiel niet gevonden" }, { status: 404 });
     }
 
-    // Maak de afspraak aan
     const afspraak = await prisma.afspraak.create({
       data: {
         werknemer_id: werknemer.werknemer_id,
@@ -462,23 +346,12 @@ export async function POST(request: NextRequest) {
         eind_datum: new Date(eind_datum),
         status: status || "gepland",
       },
-      include: {
-        klant: {
-          select: {
-            naam: true,
-            email: true,
-            telefoonnummer: true,
-          },
-        },
-      },
+      include: { klant: true },
     });
 
     return NextResponse.json(afspraak, { status: 201 });
   } catch (error) {
     console.error("Fout bij maken afspraak:", error);
-    return NextResponse.json(
-      { error: "Er is een fout opgetreden" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Er is een interne serverfout opgetreden" }, { status: 500 });
   }
 }
