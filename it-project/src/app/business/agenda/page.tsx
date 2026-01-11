@@ -317,13 +317,6 @@ export default function BusinessAgendaPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="p-2 hover:bg-slate-700/50 rounded-lg transition text-slate-400 hover:text-white">
-              <Search className="w-5 h-5" />
-            </button>
-            <button className="p-2 hover:bg-slate-700/50 rounded-lg transition relative text-slate-400 hover:text-white">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-            </button>
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>
@@ -426,7 +419,7 @@ export default function BusinessAgendaPage() {
                   <Button
                     variant="outline"
                     onClick={() => setIsDialogOpen(false)}
-                    className="border-slate-600"
+                    className="border-slate-600 text-black bg-white hover:bg-slate-200"
                   >
                     Annuleren
                   </Button>
@@ -543,26 +536,6 @@ export default function BusinessAgendaPage() {
                   {format(selectedDate, "EEEE, d MMMM yyyy", { locale: nl })}
                 </p>
               </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setViewMode("day")}
-                  className={`px-3 py-1 rounded-lg font-medium transition ${viewMode === "day" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" : "text-slate-400 hover:text-white"}`}
-                >
-                  Dag
-                </button>
-                <button 
-                  onClick={() => setViewMode("week")}
-                  className={`px-3 py-1 rounded-lg font-medium transition ${viewMode === "week" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" : "text-slate-400 hover:text-white"}`}
-                >
-                  Week
-                </button>
-                <button 
-                  onClick={() => setViewMode("month")}
-                  className={`px-3 py-1 rounded-lg font-medium transition ${viewMode === "month" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" : "text-slate-400 hover:text-white"}`}
-                >
-                  Maand
-                </button>
-              </div>
             </div>
 
             {/* Loading State */}
@@ -648,7 +621,7 @@ export default function BusinessAgendaPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="border-slate-600 text-slate-300 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30"
+                            className="bg-[#ef4444] border-[#dc2626] text-white hover:bg-[#b91c1c] hover:border-[#991b1b]"
                             onClick={() => handleVerwijderAfspraak(apt.afspraak_id)}
                           >
                             <Trash2 className="w-4 h-4" />

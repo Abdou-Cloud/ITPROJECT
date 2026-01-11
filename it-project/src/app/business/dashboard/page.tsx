@@ -9,7 +9,6 @@ import {
   Calendar,
   Phone,
   Users,
-  Settings,
   Bell,
   Search,
   Plus,
@@ -73,20 +72,9 @@ export default function BusinessDashboard() {
                 <Users className="w-4 h-4" />
                 Klanten
               </button>
-              <button onClick={() => router.push("/business/instellingen")} className="px-3 py-2 hover:bg-slate-700/50 rounded-lg transition flex items-center gap-2 text-slate-300 hover:text-white">
-                <Settings className="w-4 h-4" />
-                Instellingen
-              </button>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="p-2 hover:bg-slate-700/50 rounded-lg transition text-slate-400 hover:text-white">
-              <Search className="w-5 h-5" />
-            </button>
-            <button className="p-2 hover:bg-slate-700/50 rounded-lg transition relative text-slate-400 hover:text-white">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-            </button>
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>
