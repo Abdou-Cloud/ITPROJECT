@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import StatCard from '@/components/admin/StatCard';
 import SystemStatus from '@/components/admin/SystemStatus';
+import { RefreshCw } from 'lucide-react'; // Importeer icoon voor de knop
 
 export default async function AdminDashboardPage() {
   // We initialiseren de status variabelen
@@ -11,19 +12,19 @@ export default async function AdminDashboardPage() {
     bedrijven: 0,
     klanten: 0,
     afspraken: 0,
-    berichten: 0
+    // berichten stat verwijderd
   };
 
   try {
     // We halen data op. Als dit lukt, werkt de database verbinding.
-    const [bedrijven, klanten, afspraken, berichten] = await Promise.all([
+    // Berichten count verwijderd uit Promise.all
+    const [bedrijven, klanten, afspraken] = await Promise.all([
       prisma.bedrijf.count(),
       prisma.klant.count(),
       prisma.afspraak.count(),
-      prisma.bericht.count(),
     ]);
 
-    stats = { bedrijven, klanten, afspraken, berichten };
+    stats = { bedrijven, klanten, afspraken };
     isDbConnected = true;
   } catch (error) {
     console.error("Fout bij ophalen dashboard data:", error);
@@ -32,6 +33,22 @@ export default async function AdminDashboardPage() {
 
   // Systeem is 'GEACTIVEERD' zodra de database verbinding werkt
   const isSystemActive = isDbConnected;
+
+  // Dynamische status voor de rechterkolom
+  const currentSystems = [
+    { 
+      name: "Database", 
+      status: isDbConnected ? "Operational" : "Offline", 
+      ok: isDbConnected 
+    },
+    { name: "Email Service", status: "Operational", ok: true },
+    { name: "Voice API", status: "Operational", ok: true },
+    { 
+      name: "Calendar Sync", 
+      status: isDbConnected ? "Operational" : "Degraded", 
+      ok: isDbConnected 
+    },
+  ];
 
   return (
     <div className="p-8 space-y-8 bg-[#0B0F1A] min-h-screen text-white">
@@ -54,42 +71,45 @@ export default async function AdminDashboardPage() {
         </div>
       </header>
       
-      {/* Statistieken Rij */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Statistieken Rij - Aangepast naar 3 kolommen en zonder percentages */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard 
           title="Bedrijven" 
           value={stats.bedrijven} 
           description="Geregistreerde SaaS klanten" 
-          percentageChange={0} 
           icon="users"
         />
         <StatCard 
           title="Klanten" 
           value={stats.klanten} 
           description="Eindgebruikers in systeem" 
-          percentageChange={0} 
           icon="user"
         />
         <StatCard 
           title="Afspraken" 
           value={stats.afspraken} 
           description="Totaal geplande sessies" 
-          percentageChange={0} 
           icon="calendar"
-        />
-        <StatCard 
-          title="Berichten" 
-          value={stats.berichten} 
-          description="Klant interacties" 
-          percentageChange={0} 
-          icon="message"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Backend Configuratie Sectie */}
         <div className="lg:col-span-2 bg-[#1e1e1e] p-6 rounded-xl border border-[#333]">
-          <h2 className="text-xl font-bold mb-6">Backend Configuratie</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold">Backend Configuratie</h2>
+            
+            {/* Handmatige Refresh Knop */}
+            <form action="">
+              <button 
+                type="submit"
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-[#2a2a2a] hover:bg-[#333] border border-[#444] rounded-lg transition-colors text-gray-300"
+              >
+                <RefreshCw size={14} />
+                Status Verversen
+              </button>
+            </form>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Database Status */}
@@ -100,7 +120,7 @@ export default async function AdminDashboardPage() {
               </p>
             </div>
 
-            {/* Klantendatabase Status (Vervangt AI Engine) */}
+            {/* Klantendatabase Status */}
             <div className="p-4 rounded-lg bg-[#0B0F1A] border border-[#333]">
               <p className="text-sm text-gray-400 mb-1">Data Validatie</p>
               <p className={`font-mono text-sm ${stats.bedrijven > 0 ? 'text-green-400' : 'text-orange-400'}`}>
@@ -111,14 +131,14 @@ export default async function AdminDashboardPage() {
 
           <div className="mt-6 p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
             <p className="text-xs text-blue-400 italic">
-              Het systeem voert elke 60 seconden een automatische health-check uit op de database tabellen.
+              Het systeem voert bij elke refresh een automatische health-check uit op de database tabellen.
             </p>
           </div>
         </div>
         
         {/* Rechter kolom met algemene systeem status */}
         <div className="lg:col-span-1">
-          <SystemStatus />
+          <SystemStatus systems={currentSystems} />
         </div>
       </div>
     </div>

@@ -61,7 +61,7 @@ export default async function KlantenPage({
               <th className="px-6 py-4">Status & Bedrijf</th>
               <th className="px-6 py-4 text-center">Totaal Afspraken</th>
               <th className="px-6 py-4 text-center">AI Berichten</th>
-              <th className="px-6 py-4 text-center">Laatste Bezoek</th>
+              <th className="px-6 py-4 text-center">Volgende Afspraak</th>
               <th className="px-6 py-4 text-right">Actie</th>
             </tr>
           </thead>

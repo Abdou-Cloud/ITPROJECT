@@ -52,7 +52,7 @@ export default async function BetalingenPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Betalingen & Abonnementen</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Beheer actieve abonnementen en facturatie voor {totaalBedrijven} bedrijven via Clerk.
+            Beheer actieve abonnementen en facturatie voor de {totaalBedrijven} bedrijven via Clerk.
           </p>
         </div>
 
