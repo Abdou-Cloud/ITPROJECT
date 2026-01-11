@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Mail, Phone, Calendar, MessageSquare, User, Building2 } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, User, Building2 } from "lucide-react"; // MessageSquare icoon verwijderd
 
 export default async function KlantDetailPage({ params }: { params: { id: string } }) {
   const id = parseInt(params.id);
 
-  // Haal de klant op inclusief alle relaties uit het schema
+  // Haal de klant op inclusief alle relaties uit het schema (berichten verwijderd)
   const klant = await prisma.klant.findUnique({
     where: { klant_id: id },
     include: {
@@ -14,10 +14,8 @@ export default async function KlantDetailPage({ params }: { params: { id: string
       afspraken: {
         include: { werknemer: true },
         orderBy: { start_datum: 'desc' }
-      },
-      berichten: {
-        orderBy: { created_at: 'desc' }
       }
+      // berichten include verwijderd
     }
   });
 
@@ -78,15 +76,12 @@ export default async function KlantDetailPage({ params }: { params: { id: string
 
           <div className="p-6 bg-[#1e1e1e] border border-[#333] rounded-xl">
             <h2 className="text-lg font-bold mb-4">Statistieken</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#0B0F1A] p-4 rounded-lg text-center">
+            <div className="grid grid-cols-1"> {/* grid-cols-2 naar grid-cols-1 aangepast */}
+              <div className="bg-[#0B0F1A] p-4 rounded-lg text-center border border-[#333]">
                 <p className="text-2xl font-bold text-[#ff7a2d]">{klant.afspraken.length}</p>
                 <p className="text-[10px] text-gray-500 uppercase">Afspraken</p>
               </div>
-              <div className="bg-[#0B0F1A] p-4 rounded-lg text-center">
-                <p className="text-2xl font-bold text-blue-400">{klant.berichten.length}</p>
-                <p className="text-[10px] text-gray-500 uppercase">AI Chats</p>
-              </div>
+              {/* AI Chats statistiek verwijderd */}
             </div>
           </div>
         </div>
@@ -117,22 +112,7 @@ export default async function KlantDetailPage({ params }: { params: { id: string
             </div>
           </div>
 
-          {/* AI Berichten (Laatste chats) */}
-          <div className="p-6 bg-[#1e1e1e] border border-[#333] rounded-xl">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <MessageSquare size={20} className="text-blue-400" /> Laatste AI Interacties
-            </h2>
-            <div className="space-y-4">
-              {klant.berichten.length > 0 ? klant.berichten.slice(0, 5).map((bericht) => (
-                <div key={bericht.bericht_id} className="border-l-2 border-blue-500/30 pl-4 py-1">
-                  <p className="text-xs text-gray-500">{new Date(bericht.created_at).toLocaleString()}</p>
-                  <p className="text-sm text-gray-300 mt-1 italic">Interactie vastgelegd in logs</p>
-                </div>
-              )) : (
-                <p className="text-gray-500 italic text-sm">Geen chat-historie beschikbaar.</p>
-              )}
-            </div>
-          </div>
+          {/* AI Berichten (Laatste chats) sectie volledig verwijderd */}
         </div>
       </div>
     </div>
