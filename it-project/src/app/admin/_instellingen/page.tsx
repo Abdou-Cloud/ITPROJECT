@@ -12,12 +12,8 @@ export default async function SettingsPage() {
   
   if (!clerkUser) return null;
 
-  // We halen GEEN admin-gegevens meer op om de database error te vermijden
-  // We halen enkel nog het globale AI model op
-  const globalAi = await prisma.lLMProfiel.findFirst({
-    orderBy: { created_at: 'desc' },
-    select: { model: true }
-  });
+  // LLMProfiel model verwijderd - gebruik standaardwaarde
+  const globalAi = null;
 
   return (
     <SettingsForm 

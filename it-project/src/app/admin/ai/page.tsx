@@ -7,10 +7,8 @@ import Link from 'next/link';
 // import AiLogsTable from '@/components/admin/AiLogsTable';
 
 export default async function AiManagementPage() {
-  const activeProfile = await prisma.lLMProfiel.findFirst({
-    orderBy: { created_at: 'desc' },
-    include: { bedrijf: true }
-  });
+  // LLMProfiel model verwijderd - gebruik standaardwaarden
+  const activeProfile = null;
 
   // AI Logs query verwijderd om performance te verbeteren aangezien de tab/sectie weg is
 
@@ -82,13 +80,13 @@ Style Guidelines:
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">AI Model</label>
                 <div className="bg-[#121212] border border-[#333] rounded-lg p-3 text-gray-300 text-xs font-mono">
-                  {activeProfile?.model || "GPT-4o Cluster"}
+                  GPT-4o Cluster
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Gekoppeld aan</label>
                 <div className="bg-[#121212] border border-[#333] rounded-lg p-3 text-gray-300 text-xs truncate">
-                  {activeProfile?.bedrijf?.naam || "Algemeen Profiel"}
+                  Algemeen Profiel
                 </div>
               </div>
             </div>
