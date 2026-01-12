@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -40,21 +39,12 @@ export function Header({ variant }: HeaderProps) {
           )}
 
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-orange-100 flex items-center justify-center overflow-hidden">
-              {!logoError ? (
-                <Image
-                  src="/images/icons/logo.png"
-                  alt="SchedulAI Logo"
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-contain"
-                  onError={() => setLogoError(true)}
-                />
-              ) : (
-                <span className="text-lg text-slate-900">S</span>
-              )}
+            {/* Logo container aangepast naar de stijl van de Agenda pagina */}
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center font-bold shadow-lg text-white">
+              S
             </div>
-            <span className="text-lg font-semibold tracking-tight text-white">
+            {/* Tekst 'SchedulAI' in het oranje */}
+            <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">
               SchedulAI
             </span>
           </Link>
