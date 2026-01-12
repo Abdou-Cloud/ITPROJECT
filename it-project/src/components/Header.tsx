@@ -28,7 +28,7 @@ export function Header({ variant }: HeaderProps) {
           {resolvedVariant === "app" && (
             <Button
               variant="ghost"
-              className="text-slate-200 hover:text-white"
+              className="text-slate-200"
               asChild
             >
               <Link href="/" className="flex items-center gap-2">
@@ -114,14 +114,6 @@ export function Header({ variant }: HeaderProps) {
 
           {resolvedVariant === "app" && (
             <>
-              <button
-                type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-800 bg-slate-950/40 text-slate-200 hover:text-white hover:bg-slate-900 transition"
-                aria-label="Notifications"
-              >
-                <Icon name="bell" className="h-4 w-4" />
-              </button>
-
               <SignedIn>
                 <UserButton afterSignOutUrl="/" />
               </SignedIn>
