@@ -127,3 +127,7 @@ html, body {
     color: white; /* Zorgt ervoor dat standaardtekst zichtbaar blijft */
     overscroll-behavior: none;
 }
+
+html {
+  scroll-behavior: smooth;
+}
