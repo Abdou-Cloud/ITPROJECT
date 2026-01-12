@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 
     if (!werknemer) {
       // Als de gebruiker geen werknemer is, geven we een lege lijst terug in plaats van een 404
-      // Dit voorkomt foutmeldingen in het dashboard voor admins of nieuwe accounts
+      // Dit voorkomt foutmeldingen in het dashboard voor nieuwe accounts
       return NextResponse.json([]);
     }
 

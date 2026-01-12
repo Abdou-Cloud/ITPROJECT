@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getBedrijfIdForUser } from "@/lib/bedrijf-sync";
 
 /**
  * GET /api/dashboard/stats
@@ -13,15 +14,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Niet geautoriseerd" }, { status: 401 });
     }
 
-    // Vind het bedrijf_id van de ingelogde gebruiker (werknemer)
-    const werknemer = await prisma.werknemer.findUnique({
-      where: { clerkUserId: userId },
-      select: { bedrijf_id: true },
-    });
-    if (!werknemer) {
+    // Vind het bedrijf_id van de ingelogde gebruiker
+    const bedrijfId = await getBedrijfIdForUser(userId);
+    if (!bedrijfId) {
       return NextResponse.json({ error: "Geen bedrijf gevonden voor deze gebruiker" }, { status: 404 });
     }
-    const bedrijfId = werknemer.bedrijf_id;
 
 
     // Aantal afspraken vandaag (alle afspraken van werknemers van dit bedrijf)

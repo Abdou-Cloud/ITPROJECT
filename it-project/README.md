@@ -108,7 +108,7 @@ NEXT_PUBLIC_VAPI_ASSISTANT_ID=jouw_vapi_assistant_id
 
 ### Database Setup
 
-1. Maak een PostgreSQL database aan (bijv. via [Neon](https://neon.tech) of [Supabase](https://supabase.com))
+1. Maak een PostgreSQL database aan (bijv. via [Neon](https://neon.tech)) 
 2. Kopieer de connection string naar `DATABASE_URL`
 3. Run database migrations:
 ```bash
@@ -152,11 +152,11 @@ npm run dev
 
 2. **Start ngrok in een nieuwe terminal:**
 ```bash
-ngrok http 3000
+ngrok http 3000 (hangt van poort dat localhost gebruikt)
 ```
 
 3. **Kopieer de ngrok HTTPS URL:**
-   - ngrok geeft je een URL zoals: `https://abc123.ngrok-free.app`
+   - ngrok geeft je een URL zoals: `https://abc123onsubordinate-thatche.ngrok-free.app`
    - Deze URL is toegankelijk vanaf het internet
 
 4. **Update Clerk Redirect URLs:**
@@ -212,11 +212,13 @@ Het platform ondersteunt twee typen gebruikers:
    - Beschikbaarheden instellen
    - Afspraken beheren
    - Klanten bekijken
+   - Afspraken maken
 
 2. **Client** - Klanten kunnen:
    - Afspraken boeken via voice assistant
    - Hun agenda bekijken
    - Herinneringen ontvangen
+   - Handmatig boeken via agenda
 
 De authenticatie wordt afgehandeld door Clerk, met automatische synchronisatie naar de lokale database.
 
@@ -227,7 +229,6 @@ De applicatie gebruikt de volgende hoofdmodellen:
 - **Bedrijf** - Bedrijven in het systeem
 - **Werknemer** - Werknemers van bedrijven
 - **Klant** - Klanten die afspraken kunnen boeken
-- **Admin** - Administrators van het systeem
 - **Afspraak** - Gemaakte afspraken
 - **Beschikbaarheid** - Beschikbaarheid per werknemer per dag
 
