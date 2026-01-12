@@ -50,6 +50,19 @@ interface Klant {
   telefoonnummer: string;
 }
 
+interface Werknemer {
+  werknemer_id: number;
+  voornaam: string;
+  naam: string;
+  email: string;
+  beschikbaarheden: {
+    beschikbaarheid_id: number;
+    dag: string;
+    start_tijd: string;
+    eind_tijd: string;
+  }[];
+}
+
 interface Afspraak {
   afspraak_id: number;
   start_datum: string;
@@ -70,12 +83,15 @@ export default function BusinessAgendaPage() {
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   const [afspraken, setAfspraken] = useState<Afspraak[]>([]);
   const [klanten, setKlanten] = useState<Klant[]>([]);
+  const [werknemers, setWerknemers] = useState<Werknemer[]>([]);
+  const [beschikbareWerknemers, setBeschikbareWerknemers] = useState<Werknemer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state voor nieuwe afspraak
   const [nieuwAfspraak, setNieuwAfspraak] = useState({
+    werknemer_id: "",
     klant_id: "",
     start_datum: "",
     start_tijd: "",
@@ -114,16 +130,91 @@ export default function BusinessAgendaPage() {
     }
   }, []);
 
+  // Fetch werknemers
+  const fetchWerknemers = useCallback(async () => {
+    try {
+      const response = await fetch("/api/business/werknemers");
+      if (response.ok) {
+        const data = await response.json();
+        setWerknemers(data.werknemers || []);
+      }
+    } catch (error) {
+      console.error("Fout bij ophalen werknemers:", error);
+    }
+  }, []);
+
+  // Check beschikbaarheid van werknemers voor geselecteerde datum/tijd
+  const checkWerknemerBeschikbaarheid = useCallback(async () => {
+    if (!nieuwAfspraak.start_datum || !nieuwAfspraak.start_tijd || !nieuwAfspraak.eind_tijd) {
+      setBeschikbareWerknemers(werknemers);
+      // Reset werknemer selectie als datum/tijd niet compleet is
+      if (nieuwAfspraak.werknemer_id) {
+        setNieuwAfspraak({ ...nieuwAfspraak, werknemer_id: "" });
+      }
+      return;
+    }
+
+    const startDateTime = new Date(`${nieuwAfspraak.start_datum}T${nieuwAfspraak.start_tijd}`);
+    const eindDateTime = new Date(`${nieuwAfspraak.start_datum}T${nieuwAfspraak.eind_tijd}`);
+    const dayNames = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+    const dayOfWeek = dayNames[startDateTime.getDay()];
+    
+    const startMinutes = startDateTime.getHours() * 60 + startDateTime.getMinutes();
+    const eindMinutes = eindDateTime.getHours() * 60 + eindDateTime.getMinutes();
+
+    // Filter werknemers die beschikbaar zijn op deze dag en tijd
+    const beschikbaar = werknemers.filter((werknemer) => {
+      // Check of werknemer beschikbaar is op deze dag
+      const dagBeschikbaarheid = werknemer.beschikbaarheden.filter((b) => b.dag === dayOfWeek);
+      
+      if (dagBeschikbaarheid.length === 0) {
+        return false; // Werknemer werkt niet op deze dag
+      }
+
+      // Check of de geselecteerde tijd binnen de beschikbaarheid valt
+      const isBinnenBeschikbaarheid = dagBeschikbaarheid.some((b) => {
+        const bStart = new Date(b.start_tijd);
+        const bEind = new Date(b.eind_tijd);
+        const bStartMinutes = bStart.getHours() * 60 + bStart.getMinutes();
+        const bEindMinutes = bEind.getHours() * 60 + bEind.getMinutes();
+        
+        return startMinutes >= bStartMinutes && eindMinutes <= bEindMinutes;
+      });
+
+      if (!isBinnenBeschikbaarheid) {
+        return false; // Tijd valt buiten beschikbaarheid
+      }
+
+      // Check of er geen overlappende afspraken zijn
+      // We moeten dit async doen, maar voor nu filteren we alleen op beschikbaarheid
+      // De API zal de overlap check doen
+      return true;
+    });
+
+    setBeschikbareWerknemers(beschikbaar);
+    
+    // Reset werknemer selectie als de geselecteerde werknemer niet meer beschikbaar is
+    if (nieuwAfspraak.werknemer_id && !beschikbaar.some(w => String(w.werknemer_id) === nieuwAfspraak.werknemer_id)) {
+      setNieuwAfspraak({ ...nieuwAfspraak, werknemer_id: "" });
+    }
+  }, [nieuwAfspraak.start_datum, nieuwAfspraak.start_tijd, nieuwAfspraak.eind_tijd, nieuwAfspraak.werknemer_id, werknemers]);
+
   useEffect(() => {
     if (isLoaded && user) {
       fetchAfspraken();
       fetchKlanten();
+      fetchWerknemers();
     }
-  }, [isLoaded, user, fetchAfspraken, fetchKlanten]);
+  }, [isLoaded, user, fetchAfspraken, fetchKlanten, fetchWerknemers]);
+
+  // Update beschikbare werknemers wanneer datum/tijd verandert
+  useEffect(() => {
+    checkWerknemerBeschikbaarheid();
+  }, [checkWerknemerBeschikbaarheid]);
 
   // Maak nieuwe afspraak
   const handleNieuweAfspraak = async () => {
-    if (!nieuwAfspraak.klant_id || !nieuwAfspraak.start_datum || !nieuwAfspraak.start_tijd || !nieuwAfspraak.eind_tijd) {
+    if (!nieuwAfspraak.werknemer_id || !nieuwAfspraak.klant_id || !nieuwAfspraak.start_datum || !nieuwAfspraak.start_tijd || !nieuwAfspraak.eind_tijd) {
       alert("Vul alle verplichte velden in");
       return;
     }
@@ -137,6 +228,7 @@ export default function BusinessAgendaPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          werknemerId: nieuwAfspraak.werknemer_id,
           klant_id: nieuwAfspraak.klant_id,
           start_datum: start_datum.toISOString(),
           eind_datum: eind_datum.toISOString(),
@@ -147,6 +239,7 @@ export default function BusinessAgendaPage() {
       if (response.ok) {
         setIsDialogOpen(false);
         setNieuwAfspraak({
+          werknemer_id: "",
           klant_id: "",
           start_datum: "",
           start_tijd: "",
@@ -349,6 +442,40 @@ export default function BusinessAgendaPage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="werknemer">Werknemer</Label>
+                    <Select
+                      value={nieuwAfspraak.werknemer_id}
+                      onValueChange={(value) => setNieuwAfspraak({ ...nieuwAfspraak, werknemer_id: value })}
+                    >
+                      <SelectTrigger className="bg-slate-800 border-slate-700">
+                        <SelectValue placeholder="Selecteer een werknemer" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {beschikbareWerknemers.length === 0 && nieuwAfspraak.start_datum && nieuwAfspraak.start_tijd && nieuwAfspraak.eind_tijd ? (
+                          <SelectItem value="none" disabled>
+                            Geen beschikbare werknemers voor dit tijdslot
+                          </SelectItem>
+                        ) : (
+                          beschikbareWerknemers.map((werknemer) => (
+                            <SelectItem key={werknemer.werknemer_id} value={String(werknemer.werknemer_id)}>
+                              {werknemer.voornaam} {werknemer.naam}
+                            </SelectItem>
+                          ))
+                        )}
+                        {!nieuwAfspraak.start_datum || !nieuwAfspraak.start_tijd || !nieuwAfspraak.eind_tijd ? (
+                          <SelectItem value="none" disabled className="bg-white text-black">
+                            Selecteer eerst datum en tijd
+                          </SelectItem>
+                        ) : null}
+                      </SelectContent>
+                    </Select>
+                    {nieuwAfspraak.start_datum && nieuwAfspraak.start_tijd && nieuwAfspraak.eind_tijd && beschikbareWerknemers.length === 0 && (
+                      <p className="text-xs text-orange-400 mt-1">
+                        Geen werknemers beschikbaar voor dit tijdslot
+                      </p>
+                    )}
+                  </div>
                   <div className="grid gap-2">
                     <Label htmlFor="klant">Klant</Label>
                     <Select
