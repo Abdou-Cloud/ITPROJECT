@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   if (!clerkUser) return null;
 
   // LLMProfiel model verwijderd - gebruik standaardwaarde
-  const globalAi = null;
+  const activeModel = "GPT-4o";
 
   return (
     <SettingsForm 
@@ -22,7 +22,7 @@ export default async function SettingsPage() {
         imageUrl: clerkUser.imageUrl,
         email: clerkUser.primaryEmailAddress?.emailAddress
       }}
-      activeModel={globalAi?.model || "GPT-4o"}
+      activeModel={activeModel}
     />
   );
 }

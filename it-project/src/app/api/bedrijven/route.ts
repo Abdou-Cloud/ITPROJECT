@@ -51,31 +51,4 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// GET - Haal alle unieke bedrijfstypes op
-export async function OPTIONS(request: NextRequest) {
-  try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json({ error: "Niet geautoriseerd" }, { status: 401 });
-    }
-
-    const types = await prisma.bedrijf.findMany({
-      select: {
-        type: true,
-      },
-      distinct: ["type"],
-      orderBy: {
-        type: "asc",
-      },
-    });
-
-    return NextResponse.json(types.map((t) => t.type));
-  } catch (error) {
-    console.error("Fout bij ophalen bedrijfstypes:", error);
-    return NextResponse.json(
-      { error: "Er is een fout opgetreden" },
-      { status: 500 }
-    );
-  }
-}
+// OPTIONS handler verwijderd - Bedrijf model heeft geen 'type' veld
