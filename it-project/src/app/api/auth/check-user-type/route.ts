@@ -27,12 +27,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Controleer of email al geregistreerd is als bedrijf (werknemer/admin)
+    // Controleer of email al geregistreerd is als bedrijf (werknemer)
     const existingWerknemer = await prisma.werknemer.findFirst({
-      where: { email: email.toLowerCase() },
-    });
-
-    const existingAdmin = await prisma.admin.findFirst({
       where: { email: email.toLowerCase() },
     });
 
@@ -40,7 +36,7 @@ export async function GET(request: NextRequest) {
       where: { email: email.toLowerCase() },
     });
 
-    const isBusinessUser = !!(existingWerknemer || existingAdmin);
+    const isBusinessUser = !!existingWerknemer;
     const isClientUser = !!existingKlant;
 
     // Als gebruiker probeert in te loggen als bedrijf, maar al klant is

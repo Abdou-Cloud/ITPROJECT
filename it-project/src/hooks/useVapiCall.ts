@@ -11,8 +11,6 @@ interface Customer {
   email: string;
   telefoonnummer?: string;
   bedrijf_id?: number;
-  // Admin fields
-  admin_id?: number;
   // Generic
   role?: string;
   [key: string]: any;
@@ -130,7 +128,7 @@ export function useVapiCall({ customer }: UseVapiCallProps) {
       // Start de VAPI call met JWT in metadata
       await vapi.start(assistantId, {
         metadata: {
-          klant_id: customer.klant_id || customer.admin_id, // Fallback for admin
+          klant_id: customer.klant_id,
           voornaam: customer.voornaam,
           naam: customer.naam,
           email: customer.email,

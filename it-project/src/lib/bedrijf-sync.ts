@@ -3,8 +3,8 @@ import { clerkClient } from "@clerk/nextjs/server";
 
 /**
  * Zorgt ervoor dat een Bedrijf record bestaat voor de gegeven Clerk userId.
- * Als de gebruiker al een Werknemer of Admin is, retourneert hun bestaande Bedrijf.
- * Zo niet, maakt alleen een nieuw Bedrijf aan (geen Admin record).
+ * Als de gebruiker al een Werknemer is, retourneert hun bestaande Bedrijf.
+ * Zo niet, maakt alleen een nieuw Bedrijf aan.
  * 
  * Deze functie is idempotent - kan veilig meerdere keren worden aangeroepen.
  * 
@@ -35,18 +35,7 @@ export async function ensureBedrijfExists(userId: string) {
       return existingWerknemer.bedrijf;
     }
 
-    // Controleer of gebruiker al een Admin is
-    const existingAdmin = await prisma.admin.findUnique({
-      where: { clerkUserId: userId },
-      include: { bedrijf: true },
-    });
-
-    if (existingAdmin && existingAdmin.bedrijf) {
-      console.log(`[Bedrijf Sync] Bestaande Admin gevonden voor userId: ${userId}, bedrijf_id: ${existingAdmin.bedrijf_id}`);
-      return existingAdmin.bedrijf;
-    }
-
-    // Gebruiker is niet gekoppeld aan een Bedrijf via Werknemer of Admin
+    // Gebruiker is niet gekoppeld aan een Bedrijf via Werknemer
     // Controleer eerst of er al een Bedrijf bestaat met hetzelfde email adres
     const primaryEmail = user.emailAddresses.find(
       (e) => e.id === user.primaryEmailAddressId
@@ -111,7 +100,7 @@ export async function ensureBedrijfExists(userId: string) {
 
 /**
  * Haal bedrijf_id op voor een gegeven Clerk userId.
- * Probeert in deze volgorde: Admin (via clerkUserId), Werknemer (via email), Bedrijf (via email).
+ * Probeert in deze volgorde: Werknemer (via email), Bedrijf (via email).
  * Maakt GEEN nieuwe bedrijven aan - retourneert null als niets gevonden wordt.
  * 
  * @param userId - Clerk gebruikers-ID
@@ -132,17 +121,7 @@ export async function getBedrijfIdForUser(userId: string): Promise<number | null
       return null;
     }
 
-    // 1. Probeer eerst Admin (via clerkUserId)
-    const admin = await prisma.admin.findUnique({
-      where: { clerkUserId: userId },
-      select: { bedrijf_id: true },
-    });
-
-    if (admin?.bedrijf_id) {
-      return admin.bedrijf_id;
-    }
-
-    // 2. Probeer Werknemer (via email)
+    // 1. Probeer Werknemer (via email)
     const werknemer = await prisma.werknemer.findFirst({
       where: { email: userEmail },
       select: { bedrijf_id: true },
@@ -152,7 +131,7 @@ export async function getBedrijfIdForUser(userId: string): Promise<number | null
       return werknemer.bedrijf_id;
     }
 
-    // 3. Probeer Bedrijf direct (via email)
+    // 2. Probeer Bedrijf direct (via email)
     const bedrijf = await prisma.bedrijf.findFirst({
       where: { email: userEmail },
       select: { bedrijf_id: true },
