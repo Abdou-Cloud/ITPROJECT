@@ -53,6 +53,13 @@ export function Header({ variant }: HeaderProps) {
         {/* Center nav only on landing */}
         {resolvedVariant === "landing" && (
           <nav className="hidden md:flex items-center gap-6">
+            {/* Demonstratie knop die naar #demo springt */}
+            <Link
+              href="#demo"
+              className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
+            >
+              Demonstratie
+            </Link>
             <Link
               href="#features"
               className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
