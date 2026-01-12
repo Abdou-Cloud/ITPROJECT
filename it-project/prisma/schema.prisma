@@ -9,13 +9,12 @@ datasource db {
 }
 
 model Bedrijf {
-  bedrijf_id     Int          @id @default(autoincrement())
+  bedrijf_id     Int         @id @default(autoincrement())
   naam           String
   email          String
   telefoonnummer String
-  created_at     DateTime     @default(now())
-  updated_at     DateTime     @updatedAt
-  admins         Admin[]
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
   klanten        Klant[]
   werknemers     Werknemer[]
 }
@@ -47,19 +46,6 @@ model Klant {
   bedrijf_id     Int?
   afspraken      Afspraak[]
   bedrijf        Bedrijf?   @relation(fields: [bedrijf_id], references: [bedrijf_id])
-
-  @@index([bedrijf_id])
-}
-
-model Admin {
-  admin_id    Int      @id @default(autoincrement())
-  /// Verwijzing naar Clerk user (user_id)
-  clerkUserId String   @unique
-  voornaam    String
-  naam        String
-  email       String
-  bedrijf_id  Int?
-  bedrijf     Bedrijf? @relation(fields: [bedrijf_id], references: [bedrijf_id])
 
   @@index([bedrijf_id])
 }
