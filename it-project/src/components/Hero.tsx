@@ -37,6 +37,8 @@ export function Hero() {
               <Link href="/dashboard">Ga naar dashboard</Link>
             </Button>
           </SignedIn>
+          
+          {/* De href staat op #demo om te linken naar de ID in page.tsx */}
           <Button size="lg" variant="outline" asChild className="text-black">
             <Link href="#demo">Bekijk demo</Link>
           </Button>
@@ -45,4 +47,3 @@ export function Hero() {
     </section>
   );
 }
-

@@ -262,10 +262,6 @@ export default function BusinessClientsPage() {
                         <p className="font-semibold text-white">{client.afsprakenCount ?? client.afspraken?.length ?? 0}</p>
                         <p className="text-xs text-slate-400">Afspraken</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-slate-400 mb-1">-</p>
-                        <p className="text-xs text-slate-500">Laatste contact</p>
-                      </div>
                       {/* <div>{renderStars(client.rating)}</div> */}
                     </div>
                   </div>

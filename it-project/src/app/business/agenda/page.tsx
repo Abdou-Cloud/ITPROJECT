@@ -636,12 +636,6 @@ export default function BusinessAgendaPage() {
             {/* Footer Info */}
             <div className="mt-6 flex items-center justify-between text-sm text-slate-400">
               <p>✓ Afspraken worden automatisch opgeslagen in de database</p>
-              <button 
-                onClick={() => fetchAfspraken()} 
-                className="text-orange-400 hover:text-orange-300"
-              >
-                Vernieuwen →
-              </button>
             </div>
           </div>
         </div>
