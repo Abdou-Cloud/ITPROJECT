@@ -130,7 +130,7 @@ export function useVapiCall({ customer }: UseVapiCallProps) {
       // Start de VAPI call met JWT in metadata
       await vapi.start(assistantId, {
         metadata: {
-          klant_id: customer.klant_id, // Fallback for admin
+          klant_id: customer.klant_id || customer.admin_id, // Fallback for admin
           voornaam: customer.voornaam,
           naam: customer.naam,
           email: customer.email,

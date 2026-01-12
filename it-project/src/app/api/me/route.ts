@@ -10,6 +10,21 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        // Check if user is an Admin
+        const admin = await prisma.admin.findUnique({
+            where: { clerkUserId: userId },
+            select: {
+                admin_id: true,
+                voornaam: true,
+                naam: true,
+                email: true
+            },
+        });
+
+        if (admin) {
+            return NextResponse.json({ ...admin, role: "admin" }, { status: 200 });
+        }
+
         // Check if user is a Klant
         const klant = await prisma.klant.findUnique({
             where: { clerkUserId: userId },
