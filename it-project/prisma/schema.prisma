@@ -17,6 +17,11 @@ model Bedrijf {
   updated_at     DateTime    @updatedAt
   klanten        Klant[]
   werknemers     Werknemer[]
+  ai_plan          String    @default("starter")
+ai_minutes_used  Int       @default(0)
+ai_monthly_limit Int       @default(100)
+ai_last_reset    DateTime?
+
 }
 
 model Werknemer {
