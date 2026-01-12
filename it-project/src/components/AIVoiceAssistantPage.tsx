@@ -367,11 +367,6 @@ export default function AIVoiceAssistantPage() {
         <h1 className="text-4xl font-bold tracking-tight text-white">
           AI Voice Assistant
         </h1>
-        {!loadingUser && currentUser && (
-          <p className="mt-2 text-xs text-green-400">
-            Ingelogd als klant #{currentUser.klant_id}
-          </p>
-        )}
 
         <p className="text-sm md:text-base text-slate-300 max-w-3xl">
           Laat je AI assistent direct telefonisch afspraken maken - 24/7 beschikbaar voor je klanten
@@ -438,16 +433,6 @@ export default function AIVoiceAssistantPage() {
                     </Badge>
                   </div>
 
-                  <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                    <p className="text-sm font-semibold text-white mb-3">
-                      New AI Chat
-                    </p>
-                    <div className="space-y-3">
-                      {checklist.map((c) => (
-                        <ChecklistRow key={c.text} text={c.text} />
-                      ))}
-                    </div>
-                  </div>
 
                   <div className="mt-4 space-y-3">
                     <MiniFeature
@@ -474,10 +459,9 @@ export default function AIVoiceAssistantPage() {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-white">
-                          Abdennour AI
+                          AI Assistant
                         </p>
-                        <p className="text-xs text-slate-400">DENTAL ASSISTANT</p>
-                        <p className="text-xs text-orange-400">+31 6 1234 5678</p>
+            
                       </div>
                     </div>
 
@@ -573,39 +557,7 @@ export default function AIVoiceAssistantPage() {
                   </div>
                 </PanelCard>
 
-                <PanelCard title="Voordelen">
-                  <div className="space-y-4">
-                    <div className="flex gap-3">
-                      <div className="h-10 w-10 rounded-2xl bg-orange-500/15 border border-orange-500/20 flex items-center justify-center">
-                        <Icon name="clock" className="h-5 w-5 text-orange-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-white">24/7 Beschikbaar</p>
-                        <p className="text-sm text-slate-300">Maak een afspraak wanneer het jou uitkomt.</p>
-                      </div>
-                    </div>
 
-                    <div className="flex gap-3">
-                      <div className="h-10 w-10 rounded-2xl bg-orange-500/15 border border-orange-500/20 flex items-center justify-center">
-                        <Icon name="zap" className="h-5 w-5 text-orange-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-white">Direct Ingepland</p>
-                        <p className="text-sm text-slate-300">Geen wachttijden, direct een afspraak.</p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <div className="h-10 w-10 rounded-2xl bg-orange-500/15 border border-orange-500/20 flex items-center justify-center">
-                        <Icon name="shield" className="h-5 w-5 text-orange-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-white">Veilig & Privé</p>
-                        <p className="text-sm text-slate-300">Je gegevens zijn volledig beveiligd.</p>
-                      </div>
-                    </div>
-                  </div>
-                </PanelCard>
 
                 <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-orange-500/15 via-slate-950/60 to-slate-950/60 p-6 shadow-sm">
                   <div className="mb-4 flex items-center gap-2">
@@ -684,7 +636,7 @@ export default function AIVoiceAssistantPage() {
 
                   {/* Bedrijf dropdown */}
                   <select
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500 focus:bg-slate-800 focus:text-white active:bg-slate-800 active:text-white"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500"
                     value={bedrijfId}
                     onChange={(e) => setBedrijfId(e.target.value ? Number(e.target.value) : "")}
                     disabled={loadingBedrijven}
@@ -711,7 +663,7 @@ export default function AIVoiceAssistantPage() {
                   </p>
 
                   <select
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500 focus:bg-slate-800 focus:text-white active:bg-slate-800 active:text-white"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-200 outline-none focus:border-orange-500"
                     value={werknemerId}
                     onChange={(e) => setWerknemerId(e.target.value ? Number(e.target.value) : "")}
                     disabled={bedrijfId === "" || loadingWerknemers}
@@ -832,16 +784,6 @@ export default function AIVoiceAssistantPage() {
                     <StepItem nr={2} title="Kies werknemer" text="Selecteer de werknemer bij wie je wil boeken." />
                     <StepItem nr={3} title="Kies datum & tijd" text="Je ziet enkel vrije tijdsloten." />
                     <StepItem nr={4} title="Bevestiging" text="Je afspraak wordt meteen opgeslagen in het systeem." />
-                  </div>
-                </PanelCard>
-
-                <PanelCard title="Voordelen">
-                  <div className="space-y-3 text-sm text-slate-300">
-                    <p>• Alle ingeschreven bedrijven op één plek</p>
-                    <p>• Filter op categorie (kapper, tandarts, etc.)</p>
-                    <p>• 24/7 Beschikbaar</p>
-                    <p>• Direct ingepland</p>
-                    <p>• Veilig & Privé</p>
                   </div>
                 </PanelCard>
 
