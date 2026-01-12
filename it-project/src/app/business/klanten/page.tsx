@@ -97,8 +97,10 @@ export default function BusinessClientsPage() {
 
     const filteredClients = klanten.filter((client) =>
       (`${client.voornaam} ${client.naam}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (client.telefoonnummer || '').includes(searchQuery))
+        client.email.toLowerCase().includes(searchQuery.toLowerCase())
+        // Telefoonnummer uit filter verwijderd - kan later weer geactiveerd worden
+        // || (client.telefoonnummer || '').includes(searchQuery)
+      )
     );
 
   return (
@@ -207,7 +209,7 @@ export default function BusinessClientsPage() {
             <Search className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
             <input
               type="text"
-              placeholder="Zoek op naam, email of telefoonnummer..."
+              placeholder="Zoek op naam of email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg pl-10 pr-4 py-2 text-white placeholder:text-slate-500 focus:outline-none focus:border-orange-500/50 transition"
@@ -249,10 +251,11 @@ export default function BusinessClientsPage() {
                             <Mail className="w-3 h-3" />
                             {client.email}
                           </div>
-                          <div className="flex items-center gap-1">
+                          {/* Telefoonnummer verborgen - kan later weer geactiveerd worden */}
+                          {/* <div className="flex items-center gap-1">
                             <Phone className="w-3 h-3" />
                             {client.telefoonnummer}
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                     </div>

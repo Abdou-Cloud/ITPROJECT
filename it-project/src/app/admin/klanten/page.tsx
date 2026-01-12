@@ -84,7 +84,8 @@ export default async function KlantenPage({
                         <p className="font-bold text-gray-100">{klant.voornaam} {klant.naam}</p>
                         <div className="flex flex-col text-[11px] text-gray-500 mt-0.5">
                            <span className="flex items-center gap-1"><Mail size={10} /> {klant.email}</span>
-                           <span className="flex items-center gap-1"><Phone size={10} /> {klant.telefoonnummer}</span>
+                           {/* Telefoonnummer verborgen - kan later weer geactiveerd worden */}
+                           {/* <span className="flex items-center gap-1"><Phone size={10} /> {klant.telefoonnummer}</span> */}
                         </div>
                       </div>
                     </div>

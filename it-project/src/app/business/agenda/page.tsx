@@ -595,10 +595,11 @@ export default function BusinessAgendaPage() {
                                 <Clock className="w-3 h-3" />
                                 {format(new Date(apt.start_datum), "HH:mm")} - {format(new Date(apt.eind_datum), "HH:mm")}
                               </div>
-                              <div className="flex items-center gap-1">
+                              {/* Telefoonnummer verborgen - kan later weer geactiveerd worden */}
+                              {/* <div className="flex items-center gap-1">
                                 <Phone className="w-3 h-3" />
                                 {apt.klant.telefoonnummer}
-                              </div>
+                              </div> */}
                             </div>
                           </div>
                         </div>

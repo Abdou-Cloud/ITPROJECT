@@ -55,14 +55,16 @@ export default async function KlantDetailPage({ params }: { params: { id: string
                   <p className="text-sm font-medium">{klant.email}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
+              {/* Telefoonnummer verborgen - kan later weer geactiveerd worden */}
+              {/* <div className="flex items-start gap-3">
                 <Phone className="text-[#ff7a2d] mt-1" size={18} />
                 <div>
                   <p className="text-xs text-gray-500 uppercase">Telefoon</p>
                   <p className="text-sm font-medium">{klant.telefoonnummer}</p>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
+              </div> */}
+              {/* Geboortedatum verborgen - kan later weer geactiveerd worden */}
+              {/* <div className="flex items-start gap-3">
                 <Calendar className="text-[#ff7a2d] mt-1" size={18} />
                 <div>
                   <p className="text-xs text-gray-500 uppercase">Geboortedatum</p>
@@ -70,7 +72,7 @@ export default async function KlantDetailPage({ params }: { params: { id: string
                     {klant.geboorte_datum ? new Date(klant.geboorte_datum).toLocaleDateString() : "Onbekend"}
                   </p>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 

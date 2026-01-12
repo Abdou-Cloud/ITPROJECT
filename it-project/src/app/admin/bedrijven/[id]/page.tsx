@@ -52,7 +52,8 @@ export default async function BedrijfDetailPage({ params }: { params: { id: stri
             <div>
               <p className="text-gray-500 text-xs uppercase font-bold mb-2">Contact</p>
               <p className="flex items-center gap-2 text-sm"><Mail size={14} /> {bedrijf.email}</p>
-              <p className="flex items-center gap-2 text-sm mt-1"><Phone size={14} /> {bedrijf.telefoonnummer}</p>
+              {/* Telefoonnummer verborgen - kan later weer geactiveerd worden */}
+              {/* <p className="flex items-center gap-2 text-sm mt-1"><Phone size={14} /> {bedrijf.telefoonnummer}</p> */}
             </div>
             <div>
               <p className="text-gray-500 text-xs uppercase font-bold mb-2">Data</p>
