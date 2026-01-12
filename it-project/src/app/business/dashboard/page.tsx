@@ -2,8 +2,12 @@
 
 import { useUser, UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart3,
   Calendar,
@@ -23,6 +27,18 @@ import {
 export default function BusinessDashboard() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
+  
+  // Beschikbaarheid state
+  const [isBeschikbaarheidDialogOpen, setIsBeschikbaarheidDialogOpen] = useState(false);
+  const [werknemers, setWerknemers] = useState<{werknemer_id: number; voornaam: string; naam: string; email: string}[]>([]);
+  const [selectedWerknemerId, setSelectedWerknemerId] = useState<string>("");
+  const [beschikbaarheden, setBeschikbaarheden] = useState<{
+    dag: string;
+    start_tijd: string;
+    eind_tijd: string;
+    enabled: boolean;
+  }[]>([]);
+  const [loadingBeschikbaarheden, setLoadingBeschikbaarheden] = useState(false);
 
   if (!isLoaded) {
     return (
@@ -45,6 +61,96 @@ export default function BusinessDashboard() {
     if (hour < 12) return "Goedemorgen";
     if (hour < 18) return "Goedemiddag";
     return "Goedenavond";
+  };
+
+  // Laad werknemers
+  const loadWerknemers = async () => {
+    try {
+      const res = await fetch("/api/settings/werknemers");
+      if (res.ok) {
+        const data = await res.json();
+        setWerknemers(data);
+      }
+    } catch (error) {
+      console.error("Fout bij laden werknemers:", error);
+    }
+  };
+
+  // Laad beschikbaarheden voor een werknemer
+  const loadBeschikbaarheden = async (werknemerId: string) => {
+    if (!werknemerId) {
+      setBeschikbaarheden([]);
+      return;
+    }
+    
+    setLoadingBeschikbaarheden(true);
+    try {
+      const res = await fetch(`/api/settings/werknemer/beschikbaarheden?werknemer_id=${werknemerId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const dayNames = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
+        
+        const uiBeschikbaarheden = dayNames.map(day => {
+          const dbBeschikbaarheid = data.find((b: any) => b.dag === day);
+          if (dbBeschikbaarheid) {
+            const start = new Date(dbBeschikbaarheid.start_tijd);
+            const end = new Date(dbBeschikbaarheid.eind_tijd);
+            return {
+              dag: day,
+              start_tijd: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
+              eind_tijd: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
+              enabled: true,
+            };
+          }
+          return {
+            dag: day,
+            start_tijd: "09:00",
+            eind_tijd: "17:00",
+            enabled: false,
+          };
+        });
+        setBeschikbaarheden(uiBeschikbaarheden);
+      }
+    } catch (error) {
+      console.error("Fout bij laden beschikbaarheden:", error);
+    } finally {
+      setLoadingBeschikbaarheden(false);
+    }
+  };
+
+  // Sla beschikbaarheden op
+  const saveBeschikbaarheden = async () => {
+    if (!selectedWerknemerId) {
+      alert("Selecteer eerst een werknemer");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/settings/werknemer/beschikbaarheden", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          werknemer_id: selectedWerknemerId,
+          beschikbaarheden,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setIsBeschikbaarheidDialogOpen(false);
+        if (data.verwijderdeAfspraken) {
+          alert(`Beschikbaarheden opgeslagen! ${data.verwijderdeAfspraken}`);
+        } else {
+          alert("Beschikbaarheden opgeslagen!");
+        }
+      } else {
+        const errorData = await res.json().catch(() => ({ error: "Onbekende fout" }));
+        alert(errorData.error || "Fout bij opslaan");
+      }
+    } catch (error) {
+      console.error("Fout:", error);
+      alert("Er is een fout opgetreden");
+    }
   };
 
   return (
@@ -246,8 +352,14 @@ export default function BusinessDashboard() {
                 Leer hoe AI jou kan helpen besparen bij het boeken.
               </p>
               <div className="flex gap-2">
-                <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white">
-                  AI Gids
+                <Button 
+                  onClick={() => {
+                    loadWerknemers();
+                    setIsBeschikbaarheidDialogOpen(true);
+                  }}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  Beschikbaarheid
                 </Button>
                 <Button className="flex-1 bg-slate-700 hover:bg-slate-600 text-white">
                   Afspraak
@@ -281,6 +393,122 @@ export default function BusinessDashboard() {
           </Card>
         </div>
       </main>
+
+      {/* Beschikbaarheid Dialog */}
+      <Dialog open={isBeschikbaarheidDialogOpen} onOpenChange={setIsBeschikbaarheidDialogOpen}>
+        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Beschikbaarheid Instellen
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {/* Werknemer selectie */}
+            <div className="p-4 bg-slate-900/50 rounded-lg">
+              <label className="block text-sm font-medium mb-2">Selecteer Werknemer</label>
+              <Select
+                value={selectedWerknemerId}
+                onValueChange={(value) => {
+                  setSelectedWerknemerId(value);
+                  loadBeschikbaarheden(value);
+                }}
+              >
+                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                  <SelectValue placeholder="Kies een werknemer" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  {werknemers.map((w) => (
+                    <SelectItem key={w.werknemer_id} value={String(w.werknemer_id)}>
+                      {w.voornaam} {w.naam}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Beschikbaarheden per dag */}
+            {selectedWerknemerId && (
+              <div className="space-y-3">
+                {loadingBeschikbaarheden ? (
+                  <div className="text-center py-8 text-slate-400">Beschikbaarheden laden...</div>
+                ) : (
+                  beschikbaarheden.map((beschikbaarheid, index) => (
+                    <div key={beschikbaarheid.dag} className="flex items-center gap-4 p-4 bg-slate-900/50 rounded-lg">
+                      <Checkbox
+                        checked={beschikbaarheid.enabled}
+                        onCheckedChange={(checked) => {
+                          const updated = [...beschikbaarheden];
+                          updated[index].enabled = checked as boolean;
+                          setBeschikbaarheden(updated);
+                        }}
+                        className="border-slate-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+                      />
+                      <div className="flex-1 min-w-[120px]">
+                        <span className="font-medium capitalize">{beschikbaarheid.dag}</span>
+                      </div>
+                      {beschikbaarheid.enabled && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <Clock size={18} className="text-slate-400" />
+                            <input
+                              type="time"
+                              value={beschikbaarheid.start_tijd}
+                              onChange={(e) => {
+                                const updated = [...beschikbaarheden];
+                                updated[index].start_tijd = e.target.value;
+                                setBeschikbaarheden(updated);
+                              }}
+                              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-orange-500"
+                            />
+                          </div>
+                          <span className="text-slate-400">tot</span>
+                          <input
+                            type="time"
+                            value={beschikbaarheid.eind_tijd}
+                            onChange={(e) => {
+                              const updated = [...beschikbaarheden];
+                              updated[index].eind_tijd = e.target.value;
+                              setBeschikbaarheden(updated);
+                            }}
+                            className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-orange-500"
+                          />
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {!selectedWerknemerId && werknemers.length === 0 && (
+              <div className="text-center py-8 text-slate-400">
+                Geen werknemers gevonden. Voeg eerst werknemers toe aan je bedrijf.
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-6 pt-4 border-t border-slate-700">
+              <Button
+                onClick={saveBeschikbaarheden}
+                disabled={!selectedWerknemerId || loadingBeschikbaarheden}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Opslaan
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsBeschikbaarheidDialogOpen(false);
+                  setSelectedWerknemerId("");
+                  setBeschikbaarheden([]);
+                }}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white"
+              >
+                Annuleren
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
